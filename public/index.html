@@ -47,12 +47,12 @@ input::placeholder { color: var(--step-inactive); }
 .chip:hover { border-color: var(--accent); color: var(--accent); }
 .chip.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
 .chip-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 9px; }
-.city-col-labels { display: flex; gap: 9px; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 7px; padding-right: 42px; }
-.city-col-labels span:first-child { flex: 1; }
-.city-col-labels span.col-airport { width: 140px; text-align: center; flex-shrink: 0; }
-.city-col-labels span.col-arrival { width: 90px; text-align: center; flex-shrink: 0; }
-.city-col-labels span.col-nights { width: 68px; text-align: center; flex-shrink: 0; }
-.city-col-labels span.col-remove { display: none; }
+.city-col-labels { display: flex; gap: 9px; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 7px; }
+.city-col-labels span:first-child { flex: 2; min-width: 0; }
+.city-col-labels span.col-airport { flex: 0 0 140px; width: 140px; text-align: center; }
+.city-col-labels span.col-arrival { flex: 0 0 90px; width: 90px; text-align: center; }
+.city-col-labels span.col-nights { flex: 0 0 68px; width: 68px; text-align: center; }
+.city-col-labels span.col-remove { flex: 0 0 30px; width: 30px; }
 .city-list { display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px; }
 .city-row { display: flex; align-items: center; gap: 9px; }
 .city-row input { flex: 1; }
@@ -210,7 +210,7 @@ input::placeholder { color: var(--step-inactive); }
   .city-col-labels span.col-airport { flex: 1; min-width: 0; text-align: left; }
   .city-col-labels span.col-arrival { flex: 0 0 80px; width: 80px; text-align: center; }
   .city-col-labels span.col-nights { flex: 0 0 52px; width: 52px; text-align: center; }
-  .city-col-labels span.col-remove { display: block; flex: 0 0 30px; width: 30px; }
+  .city-col-labels span.col-remove { display: block; flex: 0 0 37px; width: 37px; }
   .city-row { flex-wrap: wrap; gap: 7px; }
   .city-row .autocomplete-wrap { flex: 0 0 100%; }
   .city-row .airport-input { flex: 1; width: auto; min-width: 0; padding: 12px 8px; }
