@@ -56,7 +56,8 @@ input::placeholder { color: var(--step-inactive); }
 .city-secondary-headers { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 7px; }
 .sh-lands, .sh-nights { text-align: center; }
 .city-secondary-inputs input { width: 100%; min-width: 0; }
-.city-secondary .airport-input { padding: 12px 8px; }
+.city-secondary .airport-select { padding: 12px 6px; }
+.airport-select:disabled { opacity: 0.5; cursor: not-allowed; }
 .city-secondary .arrival-input { padding: 12px 6px; text-align: center; }
 .city-secondary .nights-input { text-align: center; }
 .city-row .remove-btn { height: 30px; width: 30px; border: none; background: none; color: var(--step-inactive); font-size: 20px; cursor: pointer; border-radius: 6px; transition: color 0.2s, background 0.2s; display: flex; align-items: center; justify-content: center; }
@@ -243,7 +244,7 @@ input::placeholder { color: var(--step-inactive); }
         <div class="city-secondary">
           <div class="city-secondary-headers"><span class="sh-airport">Airport (opt.)</span><span class="sh-lands">🛬 Lands</span><span class="sh-nights">Nights</span></div>
           <div class="city-secondary-inputs">
-            <div class="autocomplete-wrap"><input type="text" class="airport-input" placeholder="e.g. CDG"/></div>
+            <select class="airport-select" disabled><option value="">Select city first</option></select>
             <input type="time" class="arrival-input"/>
             <input type="number" min="1" max="30" value="3" class="nights-input"/>
             <button class="remove-btn" onclick="removeCity(this)">×</button>
@@ -388,10 +389,9 @@ function updateDots() {
 }
 function addCity() {
   const row = document.createElement('div'); row.className = 'city-row';
-  row.innerHTML = `<div class="city-primary"><div class="city-primary-header">City, Country</div><div class="autocomplete-wrap"><input type="text" placeholder="e.g. Rome, Italy" class="city-input" autocomplete="off"/></div></div><div class="city-secondary"><div class="city-secondary-headers"><span class="sh-airport">Airport (opt.)</span><span class="sh-lands">🛬 Lands</span><span class="sh-nights">Nights</span></div><div class="city-secondary-inputs"><div class="autocomplete-wrap"><input type="text" class="airport-input" placeholder="e.g. FCO"/></div><input type="time" class="arrival-input"/><input type="number" min="1" max="30" value="3" class="nights-input"/><button class="remove-btn" onclick="removeCity(this)">×</button></div></div>`;
+  row.innerHTML = `<div class="city-primary"><div class="city-primary-header">City, Country</div><div class="autocomplete-wrap"><input type="text" placeholder="e.g. Rome, Italy" class="city-input" autocomplete="off"/></div></div><div class="city-secondary"><div class="city-secondary-headers"><span class="sh-airport">Airport (opt.)</span><span class="sh-lands">🛬 Lands</span><span class="sh-nights">Nights</span></div><div class="city-secondary-inputs"><select class="airport-select" disabled><option value="">Select city first</option></select><input type="time" class="arrival-input"/><input type="number" min="1" max="30" value="3" class="nights-input"/><button class="remove-btn" onclick="removeCity(this)">×</button></div></div>`;
   document.getElementById('cityList').appendChild(row);
   initAutocomplete(row.querySelector('.city-input'));
-  initAirportAutocomplete(row.querySelector('.airport-input'));
 }
 function removeCity(btn) { if (document.querySelectorAll('.city-row').length > 1) btn.closest('.city-row').remove(); }
 function adjust(key, delta) { state[key] = Math.max(key === 'adults' ? 1 : 0, state[key] + delta); document.getElementById(`${key}-val`).textContent = state[key]; }
@@ -403,7 +403,7 @@ function getTripProfile() {
     cities: [...document.querySelectorAll('.city-input')].map(i => i.value.trim()).filter(Boolean),
     nights: [...document.querySelectorAll('.nights-input')].map(i => parseInt(i.value) || 3),
     arrivalTimes: [...document.querySelectorAll('.arrival-input')].map(i => i.value || ''),
-    airports: [...document.querySelectorAll('.airport-input')].map(i => i.value.trim()),
+    airports: [...document.querySelectorAll('.airport-select')].map(s => s.value),
     startDate: document.getElementById('startDate').value,
     adults: state.adults, kids: state.kids,
     tripTypes: [...document.querySelectorAll('#tripType .chip.selected')].map(c => c.textContent.trim()),
@@ -554,7 +554,7 @@ function initAutocomplete(input) {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&featuretype=city&limit=5&format=json&addressdetails=1`);
       const data = await res.json();
-      showAcDropdown(input, data, v => { validValue = v; });
+      showAcDropdown(input, data, v => { validValue = v; populateAirportSelect(input.closest('.city-row'), v.split(',')[0].trim()); });
     } catch {}
   }, 300);
   input.addEventListener('input', () => doFetch(input.value.trim()));
@@ -606,47 +606,28 @@ function loadAirportData() {
     });
   return _airportDataPromise;
 }
-function searchAirports(q, airports) {
-  const lq = q.toLowerCase();
-  return airports.filter(a =>
-    a.iata.toLowerCase().startsWith(lq) ||
-    a.city.toLowerCase().includes(lq) ||
-    a.name.toLowerCase().includes(lq)
-  ).slice(0, 6);
+async function populateAirportSelect(row, cityName) {
+  const sel = row.querySelector('.airport-select');
+  if (!sel) return;
+  sel.disabled = true;
+  sel.innerHTML = '<option value="">Loading…</option>';
+  try {
+    const airports = await loadAirportData();
+    const matches = airports.filter(a => a.city.toLowerCase() === cityName.toLowerCase());
+    sel.innerHTML = '<option value="">No airport (ground arrival)</option>';
+    matches.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.iata;
+      opt.textContent = `${a.iata} — ${a.name}`;
+      sel.appendChild(opt);
+    });
+    if (matches.length === 1) sel.value = matches[0].iata;
+    sel.disabled = false;
+  } catch {
+    sel.innerHTML = '<option value="">No airport (ground arrival)</option>';
+    sel.disabled = false;
+  }
 }
-function showAirportDropdown(input, results) {
-  closeAcDropdown(input); if (!results.length) return;
-  const dd = document.createElement('div'); dd.className = 'ac-dropdown';
-  results.forEach(r => {
-    const item = document.createElement('div'); item.className = 'ac-item';
-    item.textContent = `${r.iata} — ${r.name}, ${r.country}`;
-    item.dataset.iata = r.iata;
-    item.addEventListener('mousedown', e => { e.preventDefault(); input.value = r.iata; closeAcDropdown(input); });
-    dd.appendChild(item);
-  });
-  input.parentElement.appendChild(dd);
-}
-function initAirportAutocomplete(input) {
-  const doSearch = debounce(async (q) => {
-    if (q.length < 2) { closeAcDropdown(input); return; }
-    try {
-      const airports = await loadAirportData();
-      showAirportDropdown(input, searchAirports(q, airports));
-    } catch {}
-  }, 200);
-  input.addEventListener('input', () => doSearch(input.value.trim()));
-  input.addEventListener('blur', () => setTimeout(() => closeAcDropdown(input), 200));
-  input.addEventListener('keydown', e => {
-    const dd = input.parentElement.querySelector('.ac-dropdown'); if (!dd) return;
-    const items = [...dd.querySelectorAll('.ac-item')];
-    const ai = items.findIndex(i => i.classList.contains('ac-active'));
-    if (e.key === 'ArrowDown') { e.preventDefault(); const ni = (ai + 1) % items.length; items.forEach(i => i.classList.remove('ac-active')); items[ni]?.classList.add('ac-active'); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); const ni = (ai <= 0 ? items.length : ai) - 1; items.forEach(i => i.classList.remove('ac-active')); items[ni]?.classList.add('ac-active'); }
-    else if (e.key === 'Enter') { const a = dd.querySelector('.ac-active'); if (a) { e.preventDefault(); input.value = a.dataset.iata; closeAcDropdown(input); } }
-    else if (e.key === 'Escape') { closeAcDropdown(input); }
-  });
-}
-document.querySelectorAll('.airport-input').forEach(initAirportAutocomplete);
 function resetApp() {
   document.getElementById('itinerary-view').style.display = 'none';
   document.getElementById('itinerary-header-extras').style.display = 'none';
