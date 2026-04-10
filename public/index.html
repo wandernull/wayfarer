@@ -447,7 +447,15 @@ async function callClaude(profile, customPrompt) {
       } catch {}
     }
   }
-  return JSON.parse(fullText.replace(/```json[\s\S]*?```|```/g, s => s.startsWith('```json') ? s.slice(7,-3) : s === '```' ? '' : s).trim());
+  // 1. Try raw parse first
+  try { return JSON.parse(fullText.trim()); } catch {}
+  // 2. Strip markdown fences
+  const stripped = fullText.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+  try { return JSON.parse(stripped); } catch {}
+  // 3. Extract first {...} block
+  const m = stripped.match(/\{[\s\S]*\}/);
+  if (m) return JSON.parse(m[0]);
+  throw new Error('Could not parse itinerary JSON from response');
 }
 function renderEvents(events) {
   return events.map((ev,i) => {
