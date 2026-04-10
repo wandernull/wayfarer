@@ -51,7 +51,8 @@ input::placeholder { color: var(--step-inactive); }
 .city-col-labels span:first-child { flex: 1; }
 .city-col-labels span.col-airport { width: 140px; text-align: center; flex-shrink: 0; }
 .city-col-labels span.col-arrival { width: 90px; text-align: center; flex-shrink: 0; }
-.city-col-labels span:last-child { width: 68px; text-align: center; flex-shrink: 0; }
+.city-col-labels span.col-nights { width: 68px; text-align: center; flex-shrink: 0; }
+.city-col-labels span.col-remove { display: none; }
 .city-list { display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px; }
 .city-row { display: flex; align-items: center; gap: 9px; }
 .city-row input { flex: 1; }
@@ -206,14 +207,16 @@ input::placeholder { color: var(--step-inactive); }
 @media (max-width: 640px) {
   .city-col-labels { flex-wrap: wrap; gap: 7px; padding-right: 0; }
   .city-col-labels span:first-child { flex: 0 0 100%; }
-  .city-col-labels span.col-airport { flex: 1; width: auto; text-align: left; }
-  .city-col-labels span.col-arrival { width: 80px; text-align: center; }
-  .city-col-labels span:last-child { width: 52px; margin-right: 37px; }
+  .city-col-labels span.col-airport { flex: 1; min-width: 0; text-align: left; }
+  .city-col-labels span.col-arrival { flex: 0 0 80px; width: 80px; text-align: center; }
+  .city-col-labels span.col-nights { flex: 0 0 52px; width: 52px; text-align: center; }
+  .city-col-labels span.col-remove { display: block; flex: 0 0 30px; width: 30px; }
   .city-row { flex-wrap: wrap; gap: 7px; }
-  .city-row .autocomplete-wrap { width: 100%; flex: none; }
+  .city-row .autocomplete-wrap { flex: 0 0 100%; }
   .city-row .airport-input { flex: 1; width: auto; min-width: 0; padding: 12px 8px; }
-  .city-row .arrival-input { width: 80px; padding: 12px 4px; }
-  .city-row .nights-input { width: 52px; }
+  .city-row .arrival-input { flex: 0 0 80px; width: 80px; padding: 12px 4px; }
+  .city-row .nights-input { flex: 0 0 52px; width: 52px; }
+  .city-row .remove-btn { flex: 0 0 30px; width: 30px; }
 }
 </style>
 </head>
@@ -239,7 +242,7 @@ input::placeholder { color: var(--step-inactive); }
     <div class="step-badge">Step 1 · Destination</div>
     <h2>Where are you headed?</h2>
     <p class="subtitle">Add one or more cities. Set how many nights in each.</p>
-    <div class="city-col-labels"><span>City, Country</span><span class="col-airport">Airport (opt.)</span><span class="col-arrival">🛬 Lands</span><span>Nights</span></div>
+    <div class="city-col-labels"><span>City, Country</span><span class="col-airport">Airport (opt.)</span><span class="col-arrival">🛬 Lands</span><span class="col-nights">Nights</span><span class="col-remove"></span></div>
     <div class="city-list" id="cityList">
       <div class="city-row">
         <div class="autocomplete-wrap"><input type="text" placeholder="e.g. Paris, France" class="city-input" autocomplete="off"/></div>
