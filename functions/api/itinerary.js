@@ -30,10 +30,10 @@ export async function onRequestPost(context) {
     },
     body: JSON.stringify({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 8192,
+      max_tokens: 16000,
       stream: true,
       messages,
-      system: body.system ?? "You are a helpful travel planning assistant. Create detailed, practical itineraries.",
+      system: body.system ?? "Return ONLY raw valid JSON. Be concise: max 5 events per day, descriptions under 15 words, empty details arrays.",
     }),
   });
 
