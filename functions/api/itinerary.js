@@ -33,7 +33,7 @@ export async function onRequestPost(context) {
       max_tokens: 8192,
       stream: true,
       messages,
-      system: body.system ?? "You are a helpful travel planning assistant. Create detailed, practical itineraries.",
+      system: body.system ?? "You are a travel planner. Output ONLY compact valid JSON — no markdown, no backticks, no prose. Keep every string value under 12 words. Max 4 events per day. Empty details arrays. 2 tips per day.",
     }),
   });
 
