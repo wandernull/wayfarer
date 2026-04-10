@@ -243,7 +243,7 @@ input::placeholder { color: var(--step-inactive); }
         <div class="city-secondary">
           <div class="city-secondary-headers"><span class="sh-airport">Airport (opt.)</span><span class="sh-lands">🛬 Lands</span><span class="sh-nights">Nights</span></div>
           <div class="city-secondary-inputs">
-            <input type="text" class="airport-input" placeholder="e.g. CDG"/>
+            <div class="autocomplete-wrap"><input type="text" class="airport-input" placeholder="e.g. CDG"/></div>
             <input type="time" class="arrival-input"/>
             <input type="number" min="1" max="30" value="3" class="nights-input"/>
             <button class="remove-btn" onclick="removeCity(this)">×</button>
@@ -388,9 +388,10 @@ function updateDots() {
 }
 function addCity() {
   const row = document.createElement('div'); row.className = 'city-row';
-  row.innerHTML = `<div class="city-primary"><div class="city-primary-header">City, Country</div><div class="autocomplete-wrap"><input type="text" placeholder="e.g. Rome, Italy" class="city-input" autocomplete="off"/></div></div><div class="city-secondary"><div class="city-secondary-headers"><span class="sh-airport">Airport (opt.)</span><span class="sh-lands">🛬 Lands</span><span class="sh-nights">Nights</span></div><div class="city-secondary-inputs"><input type="text" class="airport-input" placeholder="e.g. FCO"/><input type="time" class="arrival-input"/><input type="number" min="1" max="30" value="3" class="nights-input"/><button class="remove-btn" onclick="removeCity(this)">×</button></div></div>`;
+  row.innerHTML = `<div class="city-primary"><div class="city-primary-header">City, Country</div><div class="autocomplete-wrap"><input type="text" placeholder="e.g. Rome, Italy" class="city-input" autocomplete="off"/></div></div><div class="city-secondary"><div class="city-secondary-headers"><span class="sh-airport">Airport (opt.)</span><span class="sh-lands">🛬 Lands</span><span class="sh-nights">Nights</span></div><div class="city-secondary-inputs"><div class="autocomplete-wrap"><input type="text" class="airport-input" placeholder="e.g. FCO"/></div><input type="time" class="arrival-input"/><input type="number" min="1" max="30" value="3" class="nights-input"/><button class="remove-btn" onclick="removeCity(this)">×</button></div></div>`;
   document.getElementById('cityList').appendChild(row);
   initAutocomplete(row.querySelector('.city-input'));
+  initAirportAutocomplete(row.querySelector('.airport-input'));
 }
 function removeCity(btn) { if (document.querySelectorAll('.city-row').length > 1) btn.closest('.city-row').remove(); }
 function adjust(key, delta) { state[key] = Math.max(key === 'adults' ? 1 : 0, state[key] + delta); document.getElementById(`${key}-val`).textContent = state[key]; }
@@ -583,6 +584,69 @@ function showAcDropdown(input, results, onSelect) {
 }
 function closeAcDropdown(input) { input.parentElement.querySelector('.ac-dropdown')?.remove(); }
 document.querySelectorAll('.city-input').forEach(initAutocomplete);
+let _airportData = null;
+let _airportDataPromise = null;
+function loadAirportData() {
+  if (_airportData) return Promise.resolve(_airportData);
+  if (_airportDataPromise) return _airportDataPromise;
+  _airportDataPromise = fetch('https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat')
+    .then(r => r.text())
+    .then(text => {
+      const airports = [];
+      for (const line of text.split('\n')) {
+        if (!line.trim()) continue;
+        const parts = line.replace(/^"|"$/g, '').split('","');
+        if (parts.length < 6) continue;
+        const iata = parts[4];
+        if (!iata || iata === '\\N') continue;
+        airports.push({ iata, name: parts[1], city: parts[2], country: parts[3] });
+      }
+      _airportData = airports;
+      return airports;
+    });
+  return _airportDataPromise;
+}
+function searchAirports(q, airports) {
+  const lq = q.toLowerCase();
+  return airports.filter(a =>
+    a.iata.toLowerCase().startsWith(lq) ||
+    a.city.toLowerCase().includes(lq) ||
+    a.name.toLowerCase().includes(lq)
+  ).slice(0, 6);
+}
+function showAirportDropdown(input, results) {
+  closeAcDropdown(input); if (!results.length) return;
+  const dd = document.createElement('div'); dd.className = 'ac-dropdown';
+  results.forEach(r => {
+    const item = document.createElement('div'); item.className = 'ac-item';
+    item.textContent = `${r.iata} — ${r.name}, ${r.country}`;
+    item.dataset.iata = r.iata;
+    item.addEventListener('mousedown', e => { e.preventDefault(); input.value = r.iata; closeAcDropdown(input); });
+    dd.appendChild(item);
+  });
+  input.parentElement.appendChild(dd);
+}
+function initAirportAutocomplete(input) {
+  const doSearch = debounce(async (q) => {
+    if (q.length < 2) { closeAcDropdown(input); return; }
+    try {
+      const airports = await loadAirportData();
+      showAirportDropdown(input, searchAirports(q, airports));
+    } catch {}
+  }, 200);
+  input.addEventListener('input', () => doSearch(input.value.trim()));
+  input.addEventListener('blur', () => setTimeout(() => closeAcDropdown(input), 200));
+  input.addEventListener('keydown', e => {
+    const dd = input.parentElement.querySelector('.ac-dropdown'); if (!dd) return;
+    const items = [...dd.querySelectorAll('.ac-item')];
+    const ai = items.findIndex(i => i.classList.contains('ac-active'));
+    if (e.key === 'ArrowDown') { e.preventDefault(); const ni = (ai + 1) % items.length; items.forEach(i => i.classList.remove('ac-active')); items[ni]?.classList.add('ac-active'); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); const ni = (ai <= 0 ? items.length : ai) - 1; items.forEach(i => i.classList.remove('ac-active')); items[ni]?.classList.add('ac-active'); }
+    else if (e.key === 'Enter') { const a = dd.querySelector('.ac-active'); if (a) { e.preventDefault(); input.value = a.dataset.iata; closeAcDropdown(input); } }
+    else if (e.key === 'Escape') { closeAcDropdown(input); }
+  });
+}
+document.querySelectorAll('.airport-input').forEach(initAirportAutocomplete);
 function resetApp() {
   document.getElementById('itinerary-view').style.display = 'none';
   document.getElementById('itinerary-header-extras').style.display = 'none';
