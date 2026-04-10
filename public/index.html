@@ -427,9 +427,27 @@ async function callClaude(profile, customPrompt) {
   const prompt = customPrompt || `You are an expert travel planner. Create a detailed hour-by-hour travel itinerary:\nTRIP: ${cityList} | From: ${profile.departure||'unspecified'} | Start: ${profile.startDate||'unspecified'}\nGROUP: ${profile.adults} adults, ${profile.kids} children\nVIBE: ${profile.tripTypes.join(', ')||'general'} | PACE: ${profile.pace} | BUDGET: ${profile.budget} | STAY: ${profile.accom}\nDIET: ${profile.diet.join(', ')||'none'} | INTERESTS: ${profile.interests.join(', ')||'general'}\nACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | INDOOR BACKUP: ${profile.indoorAlt}\nReturn ONLY valid JSON (no markdown, no backticks):\n{"tripTitle":"evocative title","cities":[{"name":"City","country":"Country","nights":3,"dotColor":"#2D6A4F","days":[{"dayNumber":1,"date":"Mon Jun 10","title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"9:00 AM","type":"sight","tag":"Sightseeing","name":"Name","desc":"Description","details":["📍 Address","⏱ 2 hrs","🎟 €15"],"isTravel":false},{"time":"11:00 AM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 1","travelDuration":"15 min","isTravel":true}],"tips":["tip1","tip2","tip3"]}]}],"transitions":[{"from":"City1","to":"City2","mode":"✈️","desc":"Flight details"}]}\nRules: full day 8am-10pm, real restaurant names, travel segments between every activity, type=sight/meal/travel/hotel/end, distinct dotColor per city.`;
   const response = await fetch('/api/itinerary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
   if (!response.ok) throw new Error(`Server error: ${response.status}`);
-  const data = await response.json();
-  const text = data.content.map(b => b.text || '').join('');
-  return JSON.parse(text.replace(/```json|```/g, '').trim());
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let fullText = '';
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const raw = line.slice(6).trim();
+      if (raw === '[DONE]') continue;
+      try {
+        const evt = JSON.parse(raw);
+        if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') fullText += evt.delta.text;
+      } catch {}
+    }
+  }
+  return JSON.parse(fullText.replace(/```json[\s\S]*?```|```/g, s => s.startsWith('```json') ? s.slice(7,-3) : s === '```' ? '' : s).trim());
 }
 function renderEvents(events) {
   return events.map((ev,i) => {

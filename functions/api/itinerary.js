@@ -19,7 +19,9 @@ export async function onRequestPost(context) {
     });
   }
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const messages = body.messages ?? (body.prompt ? [{ role: "user", content: body.prompt }] : []);
+
+  const upstream = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -29,14 +31,24 @@ export async function onRequestPost(context) {
     body: JSON.stringify({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 8192,
-      messages: body.messages ?? (body.prompt ? [{ role: "user", content: body.prompt }] : []),
+      stream: true,
+      messages,
       system: body.system ?? "You are a helpful travel planning assistant. Create detailed, practical itineraries.",
     }),
   });
 
-  const data = await response.json();
-  return new Response(JSON.stringify(data), {
-    status: response.status,
-    headers: { "Content-Type": "application/json" },
+  if (!upstream.ok) {
+    const err = await upstream.text();
+    return new Response(err, { status: upstream.status, headers: { "Content-Type": "application/json" } });
+  }
+
+  // Pass the SSE stream straight through to the client
+  return new Response(upstream.body, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "X-Accel-Buffering": "no",
+    },
   });
 }
