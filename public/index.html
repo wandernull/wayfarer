@@ -47,9 +47,10 @@ input::placeholder { color: var(--step-inactive); }
 .chip:hover { border-color: var(--accent); color: var(--accent); }
 .chip.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
 .chip-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 9px; }
-.city-col-labels { display: flex; gap: 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 7px; padding-right: 42px; }
+.city-col-labels { display: flex; gap: 9px; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 7px; padding-right: 42px; }
 .city-col-labels span:first-child { flex: 1; }
-.city-col-labels span:last-child { width: 78px; text-align: center; }
+.city-col-labels span.col-arrival { width: 90px; text-align: center; flex-shrink: 0; }
+.city-col-labels span:last-child { width: 78px; text-align: center; flex-shrink: 0; }
 .city-list { display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px; }
 .city-row { display: flex; align-items: center; gap: 9px; }
 .city-row input { flex: 1; }
@@ -199,8 +200,7 @@ input::placeholder { color: var(--step-inactive); }
 .ac-item { padding: 10px 14px; font-size: 13px; cursor: pointer; color: var(--text-primary); transition: background 0.15s; border-bottom: 1px solid var(--border); }
 .ac-item:last-child { border-bottom: none; }
 .ac-item:hover, .ac-item.ac-active { background: var(--accent-light); color: var(--accent); }
-.city-row .arrival-input { width: 110px; flex-shrink: 0; padding: 12px 8px; text-align: center; }
-.city-col-labels span.col-arrival { width: 110px; text-align: center; }
+.city-row .arrival-input { width: 90px; flex-shrink: 0; padding: 12px 6px; text-align: center; }
 </style>
 </head>
 <body>
