@@ -595,11 +595,14 @@ function loadAirportData() {
       const airports = [];
       for (const line of text.split('\n')) {
         if (!line.trim()) continue;
-        const parts = line.replace(/^"|"$/g, '').split('","');
-        if (parts.length < 6) continue;
-        const iata = parts[4];
+        // The id field is unquoted (e.g. "13696,") — strip it so parts align correctly
+        const csvLine = line.replace(/^\d+,/, '');
+        const parts = csvLine.replace(/^"|"$/g, '').split('","');
+        if (parts.length < 5) continue;
+        // After stripping id: parts[0]=name, parts[1]=city, parts[2]=country, parts[3]=iata
+        const iata = parts[3];
         if (!iata || iata === '\\N') continue;
-        airports.push({ iata, name: parts[1], city: parts[2], country: parts[3] });
+        airports.push({ iata, name: parts[0], city: parts[1], country: parts[2] });
       }
       _airportData = airports;
       return airports;
@@ -613,7 +616,12 @@ async function populateAirportSelect(row, cityName) {
   sel.innerHTML = '<option value="">Loading…</option>';
   try {
     const airports = await loadAirportData();
-    const matches = airports.filter(a => a.city.toLowerCase() === cityName.toLowerCase());
+    const lc = cityName.toLowerCase();
+    const matches = airports.filter(a =>
+      a.city.toLowerCase() === lc ||
+      a.city.toLowerCase().includes(lc) ||
+      a.name.toLowerCase().includes(lc)
+    );
     sel.innerHTML = '<option value="">No airport (ground arrival)</option>';
     matches.forEach(a => {
       const opt = document.createElement('option');
