@@ -62,6 +62,10 @@ input::placeholder { color: var(--step-inactive); }
 .city-secondary .nights-input { text-align: center; }
 .city-row .remove-btn { height: 30px; width: 30px; border: none; background: none; color: var(--step-inactive); font-size: 20px; cursor: pointer; border-radius: 6px; transition: color 0.2s, background 0.2s; display: flex; align-items: center; justify-content: center; }
 .city-row .remove-btn:hover { color: var(--danger); background: #fdf2f2; }
+.city-departure-wrap { margin-top: 7px; padding-top: 7px; border-top: 1px dashed var(--border); }
+.city-departure-header { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 5px; }
+.city-departure-inputs { display: grid; grid-template-columns: 1fr 90px 68px 30px; gap: 9px; align-items: center; }
+.city-secondary .departure-input { padding: 12px 6px; text-align: center; }
 .add-city-btn { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--accent); background: none; border: 1.5px dashed var(--accent); border-radius: 10px; padding: 10px 18px; cursor: pointer; transition: background 0.18s; width: 100%; margin-bottom: 22px; }
 .add-city-btn:hover { background: var(--accent-light); }
 .stepper { display: flex; align-items: center; border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg); width: fit-content; }
@@ -210,6 +214,8 @@ input::placeholder { color: var(--step-inactive); }
   .city-primary, .city-secondary { width: 100%; }
   .city-secondary-headers, .city-secondary-inputs { grid-template-columns: 1fr 80px 52px 30px; gap: 7px; }
   .city-secondary .arrival-input { padding: 12px 4px; }
+  .city-departure-inputs { grid-template-columns: 1fr 80px 52px 30px; gap: 7px; }
+  .city-secondary .departure-input { padding: 12px 4px; }
 }
 @media print {
   /* Hide everything that isn't the itinerary */
@@ -280,10 +286,18 @@ input::placeholder { color: var(--step-inactive); }
         <div class="city-secondary">
           <div class="city-secondary-headers"><span class="sh-airport">Airport (opt.)</span><span class="sh-lands">🛬 Lands</span><span class="sh-nights">Nights</span></div>
           <div class="city-secondary-inputs">
-            <select class="airport-select" disabled><option value="">Select city first</option></select>
+            <select class="airport-select arrival-airport-select" disabled><option value="">Select city first</option></select>
             <input type="time" class="arrival-input"/>
             <input type="number" min="1" max="30" value="3" class="nights-input"/>
             <button class="remove-btn" onclick="removeCity(this)">×</button>
+          </div>
+          <div class="city-departure-wrap">
+            <div class="city-departure-header">🛫 Departs</div>
+            <div class="city-departure-inputs">
+              <select class="airport-select departure-airport-select" disabled><option value="">Select city first</option></select>
+              <input type="time" class="departure-input"/>
+              <span></span><span></span>
+            </div>
           </div>
         </div>
       </div>
@@ -425,7 +439,7 @@ function updateDots() {
 }
 function addCity() {
   const row = document.createElement('div'); row.className = 'city-row';
-  row.innerHTML = `<div class="city-primary"><div class="city-primary-header">City, Country</div><div class="autocomplete-wrap"><input type="text" placeholder="e.g. Rome, Italy" class="city-input" autocomplete="off"/></div></div><div class="city-secondary"><div class="city-secondary-headers"><span class="sh-airport">Airport (opt.)</span><span class="sh-lands">🛬 Lands</span><span class="sh-nights">Nights</span></div><div class="city-secondary-inputs"><select class="airport-select" disabled><option value="">Select city first</option></select><input type="time" class="arrival-input"/><input type="number" min="1" max="30" value="3" class="nights-input"/><button class="remove-btn" onclick="removeCity(this)">×</button></div></div>`;
+  row.innerHTML = `<div class="city-primary"><div class="city-primary-header">City, Country</div><div class="autocomplete-wrap"><input type="text" placeholder="e.g. Rome, Italy" class="city-input" autocomplete="off"/></div></div><div class="city-secondary"><div class="city-secondary-headers"><span class="sh-airport">Airport (opt.)</span><span class="sh-lands">🛬 Lands</span><span class="sh-nights">Nights</span></div><div class="city-secondary-inputs"><select class="airport-select arrival-airport-select" disabled><option value="">Select city first</option></select><input type="time" class="arrival-input"/><input type="number" min="1" max="30" value="3" class="nights-input"/><button class="remove-btn" onclick="removeCity(this)">×</button></div><div class="city-departure-wrap"><div class="city-departure-header">🛫 Departs</div><div class="city-departure-inputs"><select class="airport-select departure-airport-select" disabled><option value="">Select city first</option></select><input type="time" class="departure-input"/><span></span><span></span></div></div></div>`;
   document.getElementById('cityList').appendChild(row);
   initAutocomplete(row.querySelector('.city-input'));
 }
@@ -435,11 +449,21 @@ function toggleChip(el) { el.classList.toggle('selected'); }
 function singleChip(el, groupId) { el.closest('.chip-group').querySelectorAll('.chip').forEach(c => c.classList.remove('selected')); el.classList.add('selected'); }
 function selectBudget(el) { document.querySelectorAll('#budget .budget-option').forEach(b => b.classList.remove('selected')); el.classList.add('selected'); }
 function getTripProfile() {
+  const rows = [...document.querySelectorAll('.city-row')];
+  const cityData = rows.map(row => ({
+    city: row.querySelector('.city-input')?.value.trim() || '',
+    nights: parseInt(row.querySelector('.nights-input')?.value) || 3,
+    arrivalAirport: row.querySelector('.arrival-airport-select')?.value || '',
+    arrivalTime: row.querySelector('.arrival-input')?.value || '',
+    departureAirport: row.querySelector('.departure-airport-select')?.value || '',
+    departureTime: row.querySelector('.departure-input')?.value || ''
+  })).filter(d => d.city);
   return {
-    cities: [...document.querySelectorAll('.city-input')].map(i => i.value.trim()).filter(Boolean),
-    nights: [...document.querySelectorAll('.nights-input')].map(i => parseInt(i.value) || 3),
-    arrivalTimes: [...document.querySelectorAll('.arrival-input')].map(i => i.value || ''),
-    airports: [...document.querySelectorAll('.airport-select')].map(s => s.value),
+    cityData,
+    cities: cityData.map(d => d.city),
+    nights: cityData.map(d => d.nights),
+    arrivalTimes: cityData.map(d => d.arrivalTime),
+    airports: cityData.map(d => d.arrivalAirport),
     startDate: document.getElementById('startDate').value,
     adults: state.adults, kids: state.kids,
     tripTypes: [...document.querySelectorAll('#tripType .chip.selected')].map(c => c.textContent.trim()),
@@ -487,12 +511,15 @@ async function startGeneration() {
   }
 }
 async function callClaude(profile, customPrompt) {
-  const cityList = profile.cities.map((c,i) => {
-    const airp = profile.airports?.[i] ? ` via ${profile.airports[i]}` : '';
-    const arr = profile.arrivalTimes?.[i] ? `, arrives at ${profile.arrivalTimes[i]}` : '';
-    return `${c} (${profile.nights[i]} nights${airp}${arr})`;
+  const src = profile.cityData || profile.cities.map((c,i) => ({ city: c, nights: profile.nights[i], arrivalAirport: profile.airports?.[i]||'', arrivalTime: profile.arrivalTimes?.[i]||'', departureAirport: '', departureTime: '' }));
+  const cityList = src.map(d => {
+    const airp = d.arrivalAirport ? ` via ${d.arrivalAirport}` : '';
+    const arr = d.arrivalTime ? `, arrives at ${d.arrivalTime}` : '';
+    const depAirp = d.departureAirport ? ` via ${d.departureAirport}` : '';
+    const dep = d.departureTime ? `, departs at ${d.departureTime}${depAirp}` : '';
+    return `${d.city} (${d.nights} nights${airp}${arr}${dep})`;
   }).join(', ');
-  const prompt = customPrompt || `You are an expert travel planner. Create a detailed hour-by-hour travel itinerary:\nTRIP: ${cityList} | Start: ${profile.startDate||'unspecified'}\nGROUP: ${profile.adults} adults, ${profile.kids} children\nVIBE: ${profile.tripTypes.join(', ')||'general'} | PACE: ${profile.pace} | BUDGET: ${profile.budget} | STAY: ${profile.accom}\nDIET: ${profile.diet.join(', ')||'none'} | INTERESTS: ${profile.interests.join(', ')||'general'}\nACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | INDOOR BACKUP: ${profile.indoorAlt}\nEach city in the trip may include an airport code and landing time (e.g. "Paris via CDG, lands at 14:00"). Three cases for day 1 of each city: (1) Airport + arrival time provided: open with an isTravel:true airport→hotel transport card using realistic transfer duration for that city/airport (e.g. CDG to Paris center ~40min, DPS to Ubud ~2hrs), then hotel check-in, then activities from that point. (2) No airport + arrival time provided: user arrived by ground (train/bus/car) — skip any airport card, start day 1 with hotel check-in at the arrival time, then activities. (3) No airport + no arrival time: start day 1 at a reasonable morning time (e.g. 9:00 AM) with hotel check-in then activities. Include a hotel check-in event on day 1 of each city with a real hotel recommendation matching the budget and accommodation preference. Do NOT include flight or transport cards between cities — only within-city travel segments.\nReturn ONLY valid JSON (no markdown, no backticks):\n{"tripTitle":"evocative title","cities":[{"name":"City","country":"Country","nights":3,"dotColor":"#2D6A4F","days":[{"dayNumber":1,"date":"Mon Jun 10","title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"9:00 AM","type":"sight","tag":"Sightseeing","name":"Name","desc":"One sentence description","details":["📍 Full address","⏱ ~2 hrs","🎟 €15 – book online","📅 Book in advance"],"isTravel":false},{"time":"11:00 AM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)","travelDuration":"22 min","isTravel":true},{"time":"1:00 PM","type":"meal","tag":"Lunch","name":"Restaurant Name","desc":"One sentence description","details":["📍 Full address","⏱ ~1.5 hrs","💶 ~€35/person","📅 Reserve 2 days ahead"],"isTravel":false},{"time":"8:00 PM","type":"hotel","tag":"Hotel","name":"Hotel Name","desc":"One sentence description","details":["📍 Full address","🏨 ~€120/night","🛎 Early check-in available"],"isTravel":false}],"tips":["tip1","tip2","tip3"]}]}]}\nDetails rules: Hotels→["📍 address","🏨 ~€X/night","🛎 check-in note"]; Restaurants→["📍 address","⏱ ~1.5 hrs","💶 ~€X/person","📅 reservation note"]; Sights→["📍 address","⏱ ~X hrs","🎟 ticket info","📅 booking note"]; Travel cards→travelDesc must include full route with line names/stops and cost e.g. "Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)".\nRules: max 6 events per day, full day 8am-10pm, real restaurant/hotel/sight names with real addresses, travel segments between every activity, type=sight/meal/travel/hotel/end, distinct dotColor per city. Every day must include a dinner event (type=meal, tag=Dinner) around 19:00–20:00 — never skip dinner. If nightlife is listed in interests, include 1-2 nightlife events after dinner (bars, clubs, dancing, live music — type=sight, tag=Nightlife) starting around 21:30–22:00 on most days; the flow should be: ...afternoon activity → dinner (~19:30) → nightlife venue (~21:30).`;
+  const prompt = customPrompt || `You are an expert travel planner. Create a detailed hour-by-hour travel itinerary:\nTRIP: ${cityList} | Start: ${profile.startDate||'unspecified'}\nGROUP: ${profile.adults} adults, ${profile.kids} children\nVIBE: ${profile.tripTypes.join(', ')||'general'} | PACE: ${profile.pace} | BUDGET: ${profile.budget} | STAY: ${profile.accom}\nDIET: ${profile.diet.join(', ')||'none'} | INTERESTS: ${profile.interests.join(', ')||'general'}\nACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | INDOOR BACKUP: ${profile.indoorAlt}\nEach city in the trip may include an airport code and landing time (e.g. "Paris via CDG, lands at 14:00"). Three cases for day 1 of each city: (1) Airport + arrival time provided: open with an isTravel:true airport→hotel transport card using realistic transfer duration for that city/airport (e.g. CDG to Paris center ~40min, DPS to Ubud ~2hrs), then hotel check-in, then activities from that point. (2) No airport + arrival time provided: user arrived by ground (train/bus/car) — skip any airport card, start day 1 with hotel check-in at the arrival time, then activities. (3) No airport + no arrival time: start day 1 at a reasonable morning time (e.g. 9:00 AM) with hotel check-in then activities. Include a hotel check-in event on day 1 of each city with a real hotel recommendation matching the budget and accommodation preference. Do NOT include flight or transport cards between cities — only within-city travel segments. Departure rule: for each city, if a departure time is provided, plan the last day so all activities end with enough buffer — if a departure airport is also set, end activities at least 3 hours before the departure time (airport transfer + check-in); if no departure airport, end activities at least 1 hour before. Never schedule anything that would conflict with the departure window.\nReturn ONLY valid JSON (no markdown, no backticks):\n{"tripTitle":"evocative title","cities":[{"name":"City","country":"Country","nights":3,"dotColor":"#2D6A4F","days":[{"dayNumber":1,"date":"Mon Jun 10","title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"9:00 AM","type":"sight","tag":"Sightseeing","name":"Name","desc":"One sentence description","details":["📍 Full address","⏱ ~2 hrs","🎟 €15 – book online","📅 Book in advance"],"isTravel":false},{"time":"11:00 AM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)","travelDuration":"22 min","isTravel":true},{"time":"1:00 PM","type":"meal","tag":"Lunch","name":"Restaurant Name","desc":"One sentence description","details":["📍 Full address","⏱ ~1.5 hrs","💶 ~€35/person","📅 Reserve 2 days ahead"],"isTravel":false},{"time":"8:00 PM","type":"hotel","tag":"Hotel","name":"Hotel Name","desc":"One sentence description","details":["📍 Full address","🏨 ~€120/night","🛎 Early check-in available"],"isTravel":false}],"tips":["tip1","tip2","tip3"]}]}]}\nDetails rules: Hotels→["📍 address","🏨 ~€X/night","🛎 check-in note"]; Restaurants→["📍 address","⏱ ~1.5 hrs","💶 ~€X/person","📅 reservation note"]; Sights→["📍 address","⏱ ~X hrs","🎟 ticket info","📅 booking note"]; Travel cards→travelDesc must include full route with line names/stops and cost e.g. "Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)".\nRules: max 6 events per day, full day 8am-10pm, real restaurant/hotel/sight names with real addresses, travel segments between every activity, type=sight/meal/travel/hotel/end, distinct dotColor per city. Every day must include a dinner event (type=meal, tag=Dinner) around 19:00–20:00 — never skip dinner. If nightlife is listed in interests, include 1-2 nightlife events after dinner (bars, clubs, dancing, live music — type=sight, tag=Nightlife) starting around 21:30–22:00 on most days; the flow should be: ...afternoon activity → dinner (~19:30) → nightlife venue (~21:30).`;
   const response = await fetch('/api/itinerary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
   if (!response.ok) throw new Error(`Server error: ${response.status}`);
   const reader = response.body.getReader();
@@ -601,7 +628,7 @@ function initAutocomplete(input) {
     const ai = items.findIndex(i => i.classList.contains('ac-active'));
     if (e.key === 'ArrowDown') { e.preventDefault(); const ni = (ai + 1) % items.length; items.forEach(i => i.classList.remove('ac-active')); items[ni]?.classList.add('ac-active'); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); const ni = (ai <= 0 ? items.length : ai) - 1; items.forEach(i => i.classList.remove('ac-active')); items[ni]?.classList.add('ac-active'); }
-    else if (e.key === 'Enter') { const a = dd.querySelector('.ac-active'); if (a) { e.preventDefault(); input.value = a.textContent; validValue = a.textContent; closeAcDropdown(input); } }
+    else if (e.key === 'Enter') { const a = dd.querySelector('.ac-active'); if (a) { e.preventDefault(); input.value = a.textContent; validValue = a.textContent; closeAcDropdown(input); populateAirportSelect(input.closest('.city-row'), a.textContent.split(',')[0].trim()); } }
     else if (e.key === 'Escape') { closeAcDropdown(input); input.value = validValue; }
   });
 }
@@ -646,10 +673,9 @@ function loadAirportData() {
   return _airportDataPromise;
 }
 async function populateAirportSelect(row, cityName) {
-  const sel = row.querySelector('.airport-select');
-  if (!sel) return;
-  sel.disabled = true;
-  sel.innerHTML = '<option value="">Loading…</option>';
+  const sels = [...row.querySelectorAll('.airport-select')];
+  if (!sels.length) return;
+  sels.forEach(s => { s.disabled = true; s.innerHTML = '<option value="">Loading…</option>'; });
   try {
     const airports = await loadAirportData();
     const lc = cityName.toLowerCase();
@@ -658,18 +684,17 @@ async function populateAirportSelect(row, cityName) {
       a.city.toLowerCase().includes(lc) ||
       a.name.toLowerCase().includes(lc)
     );
-    sel.innerHTML = '<option value="">No airport (ground arrival)</option>';
-    matches.forEach(a => {
-      const opt = document.createElement('option');
-      opt.value = a.iata;
-      opt.textContent = `${a.iata} — ${a.name}`;
-      sel.appendChild(opt);
+    sels.forEach(s => {
+      s.innerHTML = '<option value="">No airport (opt.)</option>';
+      matches.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.iata; opt.textContent = `${a.iata} — ${a.name}`; s.appendChild(opt);
+      });
+      if (matches.length === 1) s.value = matches[0].iata;
+      s.disabled = false;
     });
-    if (matches.length === 1) sel.value = matches[0].iata;
-    sel.disabled = false;
   } catch {
-    sel.innerHTML = '<option value="">No airport (ground arrival)</option>';
-    sel.disabled = false;
+    sels.forEach(s => { s.innerHTML = '<option value="">No airport (opt.)</option>'; s.disabled = false; });
   }
 }
 function resetApp() {
