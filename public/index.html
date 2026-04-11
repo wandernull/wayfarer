@@ -211,6 +211,42 @@ input::placeholder { color: var(--step-inactive); }
   .city-secondary-headers, .city-secondary-inputs { grid-template-columns: 1fr 80px 52px 30px; gap: 7px; }
   .city-secondary .arrival-input { padding: 12px 4px; }
 }
+@media print {
+  /* Hide everything that isn't the itinerary */
+  #app-header, #onboarding-view, #loading-view,
+  .it-sidebar, .regen-row, .no-print { display: none !important; }
+
+  /* Reset page chrome */
+  body { background: #fff; color: #000; font-size: 11pt; }
+  #itinerary-view { display: block !important; padding-top: 0; }
+  .itinerary-layout { display: block; }
+  .it-main { margin-left: 0; max-width: 100%; padding: 16pt 24pt; }
+
+  /* Cards and surfaces */
+  .t-card, .tips-box, .day-strip, .weather-badge {
+    background: #fff !important;
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+  }
+  .t-card:hover { transform: none !important; }
+
+  /* Typography */
+  .day-title { font-size: 16pt; }
+  .day-eyebrow { font-size: 8pt; }
+  .t-name { font-size: 11pt; }
+  .t-desc, .t-pill { font-size: 9.5pt; color: #444 !important; }
+  .tips-list li { font-size: 9.5pt; color: #2a5c44 !important; }
+
+  /* Page breaks — try to keep each day together */
+  .day-section { page-break-inside: avoid; break-inside: avoid; margin-bottom: 24pt; }
+  .city-divider { page-break-before: always; break-before: always; margin: 12pt 0; }
+
+  /* Remove hover/animation artifacts */
+  * { animation: none !important; transition: none !important; }
+
+  /* Ensure links/route badges are readable */
+  .route-city { background: #e8f4ef !important; color: #1a1714 !important; }
+}
 </style>
 </head>
 <body>
@@ -227,7 +263,7 @@ input::placeholder { color: var(--step-inactive); }
   <div id="itinerary-header-extras">
     <div class="trip-route" id="header-route"></div>
     <button class="btn-outline" onclick="resetApp()">✏️ Edit trip</button>
-    <button class="btn-solid">↗ Share</button>
+    <button class="btn-solid no-print" onclick="window.print()">🖨 Export PDF</button>
   </div>
 </header>
 <div id="onboarding-view">
