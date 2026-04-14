@@ -671,18 +671,32 @@ function loadAirportData() {
     .then(r => r.text())
     .then(text => {
       const airports = [];
+      // Parse a CSV line handling both quoted and unquoted fields
+      function parseCSVLine(line) {
+        const fields = []; let i = 0;
+        while (i < line.length) {
+          if (line[i] === '"') {
+            let j = i + 1;
+            while (j < line.length && line[j] !== '"') j++;
+            fields.push(line.slice(i + 1, j));
+            i = j + 1; if (line[i] === ',') i++;
+          } else {
+            let j = line.indexOf(',', i); if (j === -1) j = line.length;
+            fields.push(line.slice(i, j)); i = j + 1;
+          }
+        }
+        return fields;
+      }
       for (const line of text.split('\n')) {
         if (!line.trim()) continue;
-        // The id field is unquoted (e.g. "13696,") — strip it so parts align correctly
-        const csvLine = line.replace(/^\d+,/, '');
-        const parts = csvLine.replace(/^"|"$/g, '').split('","');
-        if (parts.length < 5) continue;
-        // After stripping id: parts[0]=name, parts[1]=city, parts[2]=country, parts[3]=iata
-        const iata = parts[3];
-        if (!iata || iata === '\\N') continue;
-        const lat = parseFloat(parts[5]); const lon = parseFloat(parts[6]);
+        const f = parseCSVLine(line);
+        // airports.dat: 0=id, 1=name, 2=city, 3=country, 4=iata, 5=icao, 6=lat, 7=lon
+        if (f.length < 8) continue;
+        const iata = f[4];
+        if (!iata || iata === '\\N' || iata.length !== 3) continue;
+        const lat = parseFloat(f[6]); const lon = parseFloat(f[7]);
         if (isNaN(lat) || isNaN(lon)) continue;
-        airports.push({ iata, name: parts[0], city: parts[1], country: parts[2], lat, lon });
+        airports.push({ iata, name: f[1], city: f[2], country: f[3], lat, lon });
       }
       _airportData = airports;
       return airports;
