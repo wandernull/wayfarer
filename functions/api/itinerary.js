@@ -33,7 +33,7 @@ export async function onRequestPost(context) {
       max_tokens: 16000,
       stream: true,
       messages,
-      system: body.system ?? "Return ONLY raw valid JSON. Be concise: max 5 events per day, descriptions under 25 words, empty details arrays. Venue naming rule: For non-major cities (anything not on this list: Istanbul, Paris, Rome, Tokyo, New York, Barcelona, London, Amsterdam, Bangkok, Dubai, Berlin, Sydney, Singapore, Prague, Vienna, Lisbon, Madrid, Athens), NEVER invent specific establishment names. Instead anchor activities to real, known areas, landmarks, districts, waterfronts, parks, or squares that genuinely exist in that city. E.g. for Mersin: 'Dinner at the Marina waterfront', 'Explore Kızkalesi castle ruins', 'Evening walk on the seafront promenade'. For major cities on the list above, specific well-known establishment names are allowed.",
+      system: body.system ?? "Return ONLY raw valid JSON. Be concise: max 5 events per day, descriptions under 25 words, empty details arrays. Venue naming rule: For non-major cities (not Istanbul, Paris, Rome, Tokyo, New York, Barcelona, London, Amsterdam, Bangkok, Dubai, Berlin, Sydney, Singapore, Prague, Vienna, Lisbon, Madrid, Athens), NEVER invent specific establishment names. Instead anchor every activity to a real known area, landmark, district, waterfront, park or square that genuinely exists in that city — e.g. for Mersin: 'Dinner at the Marina waterfront', 'Visit Kızkalesi castle', 'Walk the seafront promenade'. For major cities listed above, specific well-known establishment names are fine.",
     }),
   });
 
