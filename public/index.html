@@ -602,19 +602,22 @@ async function regenDay(dayNum, cityName, cityDayNum) {
   const btn = document.querySelector(`#day-${dayNum} .regen-btn`);
   btn.disabled = true; btn.textContent = '⏳ Regenerating…';
   const profile = state.tripData.profile;
-  const prompt = `Regenerate a completely different Day ${cityDayNum} in ${cityName}. Group: ${profile.adults} adults, ${profile.kids} kids. Budget: ${profile.budget}. Vibe: ${profile.tripTypes.join(', ')}. Diet: ${profile.diet.join(', ')||'none'}.\nReturn ONLY valid JSON (no markdown): { "title": "", "subtitle": "", "weather": {"icon":"","temp":"","desc":""}, "stats": {"activities":3,"meals":3,"walking":"","spend":""}, "events": [...same format...], "tips": ["","",""] }\nMake it creative and different. Full day 8am-10pm with travel segments. Venue naming rule for non-major cities: Do NOT invent specific establishment names (restaurants, bars, clubs, hotels). Instead, anchor every activity to a real, well-known area, district, landmark, waterfront, or public space that genuinely exists in that city. Use your knowledge of the city's geography and known areas. Examples for Mersin: "Dinner at the Marina waterfront", "Evening drinks along the seafront promenade", "Explore the Roman-era ruins at Pompeiopolis", "Morning walk in Atatürk Park". Examples for a small Italian coastal town: "Lunch at a trattoria on the main piazza", "Sunset drinks at the harbour". The goal: point users to real, findable locations and areas — not fictional establishments, but also not vague descriptions. Always name the real district, waterfront, park, square, or landmark as the location anchor. This rule ONLY applies to non-major cities — for Istanbul, Paris, Rome, Tokyo, NYC, Barcelona, London, Amsterdam, Bangkok, Dubai, etc. you may use specific well-known establishment names.`;
+  const prompt = `Regenerate a completely different Day ${cityDayNum} in ${cityName}. Group: ${profile.adults} adults, ${profile.kids} kids. Budget: ${profile.budget}. Vibe: ${profile.tripTypes.join(', ')}. Diet: ${profile.diet.join(', ')||'none'}.\nReturn ONLY valid JSON (no markdown) matching this exact structure:\n{"title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"9:00 AM","type":"sight","tag":"Sightseeing","name":"Place name","desc":"One sentence description under 25 words","details":[],"isTravel":false},{"time":"10:30 AM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 1 to City Center (~€2)","travelDuration":"15 min","isTravel":true},{"time":"1:00 PM","type":"meal","tag":"Lunch","name":"Restaurant or area name","desc":"One sentence description","details":[],"isTravel":false}],"tips":["tip1","tip2","tip3"]}\nEvent types: sight, meal, hotel, travel. For travel segments set isTravel:true and include travelMode (emoji), travelDesc (route + cost), travelDuration. For all other events set isTravel:false with type/tag/name/desc/details fields. Include travel segments between activities. Full day 8am-10pm. Always include dinner (type=meal, tag=Dinner) around 19:00-20:00. Venue naming rule for non-major cities: anchor every activity to a real known area, landmark, district, waterfront, park or square — e.g. for Mersin: "Dinner at the Marina waterfront". For Istanbul, Paris, Rome, Tokyo, NYC, Barcelona, London, Amsterdam, Bangkok, Dubai, Berlin, Sydney, Singapore, Prague, Vienna, Lisbon, Madrid, Athens specific well-known establishment names are fine.`;
   try {
     const newDay = await callClaude(profile, prompt);
     const section = document.getElementById(`day-${dayNum}`);
-    section.querySelector('.day-title').textContent = newDay.title;
-    section.querySelector('.day-subtitle').textContent = newDay.subtitle;
-    section.querySelector('.weather-icon').textContent = newDay.weather.icon;
-    section.querySelector('.weather-temp').textContent = newDay.weather.temp;
-    section.querySelector('.weather-desc').textContent = newDay.weather.desc;
+    if (newDay.title) section.querySelector('.day-title').textContent = newDay.title;
+    if (newDay.subtitle) section.querySelector('.day-subtitle').textContent = newDay.subtitle;
+    if (newDay.weather) {
+      section.querySelector('.weather-icon').textContent = newDay.weather.icon || '';
+      section.querySelector('.weather-temp').textContent = newDay.weather.temp || '';
+      section.querySelector('.weather-desc').textContent = newDay.weather.desc || '';
+    }
     const cityObj = state.tripData.itinerary.cities.find(c => c.name === cityName);
-    section.querySelector('.timeline').innerHTML = renderEvents(newDay.events, cityName, cityObj?.country || '');
+    const events = newDay.events || [];
+    section.querySelector('.timeline').innerHTML = renderEvents(events, cityName, cityObj?.country || '');
     const tb = section.querySelector('.tips-box');
-    if (tb && newDay.tips) tb.querySelector('.tips-list').innerHTML = newDay.tips.map(t=>`<li>${t}</li>`).join('');
+    if (tb && newDay.tips?.length) tb.querySelector('.tips-list').innerHTML = newDay.tips.map(t=>`<li>${t}</li>`).join('');
     btn.disabled = false; btn.textContent = '✓ Regenerated!';
     setTimeout(() => { btn.textContent = '↻ Regenerate this day'; }, 2000);
   } catch(e) { btn.disabled = false; btn.textContent = '↻ Regenerate this day'; alert('Could not regenerate. Try again.'); }
