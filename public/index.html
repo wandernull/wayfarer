@@ -22,7 +22,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .step-dot.active { background: var(--accent); transform: scale(1.35); }
 .step-dot.done { background: var(--accent); opacity: 0.38; }
 .step-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; margin-left: 8px; }
-#itinerary-header-extras { display: none; align-items: center; gap: 10px; margin-left: auto; }
+#itinerary-header-extras { display: none; align-items: center; gap: 10px; margin-left: auto; overflow: hidden; }
+#results-action-bar { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 150; background: rgba(247,245,242,0.96); backdrop-filter: blur(14px); border-top: 1px solid var(--border); padding: 12px 36px; align-items: center; justify-content: flex-end; gap: 10px; }
 .trip-route { display: flex; align-items: center; gap: 6px; }
 .route-city { background: var(--accent-light); color: var(--accent); padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; }
 .route-sep { color: var(--border); font-size: 14px; }
@@ -137,7 +138,7 @@ input::placeholder { color: var(--step-inactive); }
 .sb-stat { display: flex; justify-content: space-between; }
 .sb-stat-l { font-size: 12px; color: var(--text-secondary); }
 .sb-stat-v { font-size: 13px; font-weight: 600; }
-.it-main { margin-left: var(--sidebar-w); flex: 1; padding: 40px 48px; max-width: calc(100% - var(--sidebar-w)); }
+.it-main { margin-left: var(--sidebar-w); flex: 1; padding: 40px 48px 100px; max-width: calc(100% - var(--sidebar-w)); }
 .day-section { margin-bottom: 52px; animation: fadeUp 0.45s ease both; }
 .day-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; padding-bottom: 22px; border-bottom: 1px solid var(--border); gap: 16px; }
 .day-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); margin-bottom: 5px; }
@@ -198,7 +199,8 @@ input::placeholder { color: var(--step-inactive); }
 .regen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 @media (max-width: 860px) {
   .it-sidebar { display: none; }
-  .it-main { margin-left: 0; max-width: 100%; padding: 24px 18px; }
+  .it-main { margin-left: 0; max-width: 100%; padding: 24px 18px 90px; }
+  #results-action-bar { padding: 10px 18px; }
   .card { padding: 34px 26px; }
   .two-col { grid-template-columns: 1fr; }
   .budget-track { grid-template-columns: 1fr; }
@@ -222,7 +224,8 @@ input::placeholder { color: var(--step-inactive); }
 @media print {
   /* Hide everything that isn't the itinerary */
   #app-header, #onboarding-view, #loading-view,
-  .it-sidebar, .regen-row, .maps-link, .no-print { display: none !important; }
+  .it-sidebar, .regen-row, .maps-link, .no-print,
+  #results-action-bar { display: none !important; }
 
   /* Reset page chrome */
   body { background: #fff; color: #000; font-size: 11pt; }
@@ -270,10 +273,12 @@ input::placeholder { color: var(--step-inactive); }
   </div>
   <div id="itinerary-header-extras">
     <div class="trip-route" id="header-route"></div>
-    <button class="btn-outline" onclick="resetApp()">✏️ Edit trip</button>
-    <button class="btn-solid no-print" onclick="window.print()">🖨 Export PDF</button>
   </div>
 </header>
+<div id="results-action-bar">
+  <button class="btn-outline" onclick="resetApp()">✏️ Edit trip</button>
+  <button class="btn-solid" onclick="window.print()">🖨 Export PDF</button>
+</div>
 <div id="onboarding-view">
   <div class="card" id="step-0">
     <div class="step-badge">Step 1 · Destination</div>
@@ -569,6 +574,7 @@ function renderEvents(events, cityName, country) {
 function showItinerary(profile, itinerary) {
   document.getElementById('loading-view').style.display = 'none';
   document.getElementById('itinerary-header-extras').style.display = 'flex';
+  document.getElementById('results-action-bar').style.display = 'flex';
   document.getElementById('header-route').innerHTML = itinerary.cities.map((c,i) => `${i>0?'<span class="route-sep">→</span>':''}<span class="route-city">${c.name}</span>`).join('');
   let sbHtml = `<span class="sb-label">Itinerary</span>`;
   let dayCounter = 0;
@@ -705,6 +711,7 @@ async function populateAirportSelect(row, cityName) {
 function resetApp() {
   document.getElementById('itinerary-view').style.display = 'none';
   document.getElementById('itinerary-header-extras').style.display = 'none';
+  document.getElementById('results-action-bar').style.display = 'none';
   for (let i = 0; i < 5; i++) { const el = document.getElementById(`ls-${i}`); if(el){ el.className='loading-step'; if(i===0)el.classList.add('active'); }}
   document.getElementById('onboarding-view').style.display = 'flex';
   document.getElementById('onboarding-progress').style.display = 'flex';
