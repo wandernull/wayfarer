@@ -631,7 +631,7 @@ function initAutocomplete(input) {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&featuretype=city&limit=5&format=json&addressdetails=1`);
       const data = await res.json();
-      showAcDropdown(input, data, v => { validValue = v; populateAirportSelect(input.closest('.city-row'), v.split(',')[0].trim()); });
+      showAcDropdown(input, data, (v, lat, lon) => { validValue = v; const row = input.closest('.city-row'); if (lat) row.dataset.lat = lat; if (lon) row.dataset.lon = lon; populateAirportSelect(row, parseFloat(lat), parseFloat(lon)); });
     } catch {}
   }, 300);
   input.addEventListener('input', () => doFetch(input.value.trim()));
@@ -642,7 +642,7 @@ function initAutocomplete(input) {
     const ai = items.findIndex(i => i.classList.contains('ac-active'));
     if (e.key === 'ArrowDown') { e.preventDefault(); const ni = (ai + 1) % items.length; items.forEach(i => i.classList.remove('ac-active')); items[ni]?.classList.add('ac-active'); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); const ni = (ai <= 0 ? items.length : ai) - 1; items.forEach(i => i.classList.remove('ac-active')); items[ni]?.classList.add('ac-active'); }
-    else if (e.key === 'Enter') { const a = dd.querySelector('.ac-active'); if (a) { e.preventDefault(); input.value = a.textContent; validValue = a.textContent; closeAcDropdown(input); populateAirportSelect(input.closest('.city-row'), a.textContent.split(',')[0].trim()); } }
+    else if (e.key === 'Enter') { const a = dd.querySelector('.ac-active'); if (a) { e.preventDefault(); input.value = a.textContent; validValue = a.textContent; const row = input.closest('.city-row'); const lat = parseFloat(a.dataset.lat); const lon = parseFloat(a.dataset.lon); if (a.dataset.lat) row.dataset.lat = a.dataset.lat; if (a.dataset.lon) row.dataset.lon = a.dataset.lon; closeAcDropdown(input); populateAirportSelect(row, lat, lon); } }
     else if (e.key === 'Escape') { closeAcDropdown(input); input.value = validValue; }
   });
 }
@@ -654,7 +654,8 @@ function showAcDropdown(input, results, onSelect) {
     const country = r.address?.country || r.display_name.split(',').pop().trim();
     const label = `${city}, ${country}`;
     const item = document.createElement('div'); item.className = 'ac-item'; item.textContent = label;
-    item.addEventListener('mousedown', e => { e.preventDefault(); input.value = label; onSelect(label); closeAcDropdown(input); });
+    item.dataset.lat = r.lat; item.dataset.lon = r.lon;
+    item.addEventListener('mousedown', e => { e.preventDefault(); input.value = label; onSelect(label, r.lat, r.lon); closeAcDropdown(input); });
     dd.appendChild(item);
   });
   input.parentElement.appendChild(dd);
@@ -679,30 +680,37 @@ function loadAirportData() {
         // After stripping id: parts[0]=name, parts[1]=city, parts[2]=country, parts[3]=iata
         const iata = parts[3];
         if (!iata || iata === '\\N') continue;
-        airports.push({ iata, name: parts[0], city: parts[1], country: parts[2] });
+        const lat = parseFloat(parts[5]); const lon = parseFloat(parts[6]);
+        if (isNaN(lat) || isNaN(lon)) continue;
+        airports.push({ iata, name: parts[0], city: parts[1], country: parts[2], lat, lon });
       }
       _airportData = airports;
       return airports;
     });
   return _airportDataPromise;
 }
-async function populateAirportSelect(row, cityName) {
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+async function populateAirportSelect(row, cityLat, cityLon) {
   const sels = [...row.querySelectorAll('.airport-select')];
   if (!sels.length) return;
   sels.forEach(s => { s.disabled = true; s.innerHTML = '<option value="">Loading…</option>'; });
   try {
     const airports = await loadAirportData();
-    const lc = cityName.toLowerCase();
-    const matches = airports.filter(a =>
-      a.city.toLowerCase() === lc ||
-      a.city.toLowerCase().includes(lc) ||
-      a.name.toLowerCase().includes(lc)
-    );
+    const matches = airports
+      .map(a => ({ ...a, dist: haversineKm(cityLat, cityLon, a.lat, a.lon) }))
+      .filter(a => a.dist <= 200)
+      .sort((a, b) => a.dist - b.dist);
     sels.forEach(s => {
       s.innerHTML = '<option value="">No airport (opt.)</option>';
       matches.forEach(a => {
         const opt = document.createElement('option');
-        opt.value = a.iata; opt.textContent = `${a.iata} — ${a.name}`; s.appendChild(opt);
+        opt.value = a.iata; opt.textContent = `${a.iata} — ${a.name}, ${a.country} (${Math.round(a.dist)}km)`; s.appendChild(opt);
       });
       if (matches.length === 1) s.value = matches[0].iata;
       s.disabled = false;
