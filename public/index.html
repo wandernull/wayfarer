@@ -32,7 +32,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .btn-outline:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
 .btn-solid { padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
 .btn-solid:hover { background: var(--accent-hover); }
-#onboarding-view { padding-top: var(--header-h); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 40px; }
+#onboarding-view { padding-top: var(--header-h); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding-bottom: 40px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; width: 100%; max-width: 620px; padding: 50px 54px; animation: fadeUp 0.38s ease both; margin: 40px 24px; }
 @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
 .step-badge { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
@@ -222,10 +222,7 @@ input::placeholder { color: var(--step-inactive); }
   .city-departure-inputs { grid-template-columns: 1fr 80px 52px 30px; gap: 7px; }
   .city-secondary .departure-input { padding: 12px 4px; }
 }
-#lang-onboarding-row { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 12px; width: 100%; max-width: 620px; padding: 16px 24px 0; }
-.lang-pill { padding: 4px 10px; border: 1.5px solid var(--border); border-radius: 20px; background: var(--surface); font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
-.lang-pill:hover { border-color: var(--accent); color: var(--accent); }
-.lang-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
 #lang-switcher { width: auto; padding: 6px 10px; font-size: 13px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-primary); cursor: pointer; font-family: 'DM Sans', sans-serif; flex-shrink: 0; }
 @media print {
   /* Hide everything that isn't the itinerary */
@@ -276,34 +273,25 @@ input::placeholder { color: var(--step-inactive); }
     <div class="step-dot" id="dot-3"></div>
     <div class="step-dot" id="dot-4"></div>
     <span class="step-label" id="step-label">Step 1 of 5</span>
+    <select id="lang-switcher" onchange="changeLang(this.value)">
+      <option value="en">🇬🇧 EN</option>
+      <option value="tr">🇹🇷 TR</option>
+      <option value="es">🇪🇸 ES</option>
+      <option value="fr">🇫🇷 FR</option>
+      <option value="de">🇩🇪 DE</option>
+      <option value="it">🇮🇹 IT</option>
+      <option value="pt">🇵🇹 PT</option>
+    </select>
   </div>
   <div id="itinerary-header-extras">
     <div class="trip-route" id="header-route"></div>
   </div>
-  <select id="lang-switcher" onchange="changeLang(this.value)" style="display:none;">
-    <option value="en">🇬🇧 EN</option>
-    <option value="tr">🇹🇷 TR</option>
-    <option value="es">🇪🇸 ES</option>
-    <option value="fr">🇫🇷 FR</option>
-    <option value="de">🇩🇪 DE</option>
-    <option value="it">🇮🇹 IT</option>
-    <option value="pt">🇵🇹 PT</option>
-  </select>
 </header>
 <div id="results-action-bar">
   <button class="btn-outline" onclick="resetApp()" data-i18n="edit_trip">✏️ Edit trip</button>
   <button class="btn-solid" onclick="window.print()" data-i18n="export_pdf">🖨 Export PDF</button>
 </div>
 <div id="onboarding-view">
-  <div id="lang-onboarding-row">
-    <button class="lang-pill active" data-lang="en" onclick="changeLang('en')">🇬🇧 EN</button>
-    <button class="lang-pill" data-lang="tr" onclick="changeLang('tr')">🇹🇷 TR</button>
-    <button class="lang-pill" data-lang="es" onclick="changeLang('es')">🇪🇸 ES</button>
-    <button class="lang-pill" data-lang="fr" onclick="changeLang('fr')">🇫🇷 FR</button>
-    <button class="lang-pill" data-lang="de" onclick="changeLang('de')">🇩🇪 DE</button>
-    <button class="lang-pill" data-lang="it" onclick="changeLang('it')">🇮🇹 IT</button>
-    <button class="lang-pill" data-lang="pt" onclick="changeLang('pt')">🇵🇹 PT</button>
-  </div>
   <div class="card" id="step-0">
     <div class="step-badge" data-i18n="step1_badge">Step 1 · Destination</div>
     <h2 data-i18n="step1_h2">Where are you headed?</h2>
@@ -465,7 +453,6 @@ function changeLang(lang) {
   localStorage.setItem('jounee_lang', lang);
   const switcher = document.getElementById('lang-switcher');
   if (switcher) switcher.value = lang;
-  document.querySelectorAll('.lang-pill').forEach(btn => btn.classList.toggle('active', btn.dataset.lang === lang));
   applyTranslations();
   document.getElementById('step-label').textContent = t('step_of').replace('{n}', state.currentStep + 1);
 }
@@ -542,6 +529,7 @@ async function startGeneration() {
   document.getElementById('onboarding-view').style.display = 'none';
   document.getElementById('onboarding-progress').style.display = 'none';
   document.getElementById('loading-view').style.display = 'flex';
+  document.getElementById('lang-switcher').style.display = 'none';
   let si = 0;
   const stepInterval = setInterval(() => {
     if (si > 0) { const prev = document.getElementById(`ls-${si-1}`); if(prev) prev.classList.replace('active','done'); }
@@ -560,6 +548,7 @@ async function startGeneration() {
     document.getElementById('loading-view').style.display = 'none';
     document.getElementById('onboarding-view').style.display = 'flex';
     document.getElementById('onboarding-progress').style.display = 'flex';
+    document.getElementById('lang-switcher').style.display = '';
     goTo(4); alert(t('alert_error') + err.message);
   }
 }
@@ -622,7 +611,7 @@ function showItinerary(profile, itinerary) {
   document.getElementById('loading-view').style.display = 'none';
   document.getElementById('itinerary-header-extras').style.display = 'flex';
   document.getElementById('results-action-bar').style.display = 'flex';
-  document.getElementById('lang-switcher').style.display = '';
+  document.getElementById('lang-switcher').style.display = 'none';
   document.getElementById('header-route').innerHTML = itinerary.cities.map((c,i) => `${i>0?'<span class="route-sep">→</span>':''}<span class="route-city">${c.name}</span>`).join('');
   let sbHtml = `<span class="sb-label">${t('sb_itinerary')}</span>`;
   let dayCounter = 0;
@@ -678,7 +667,6 @@ function setSbActive(el) { document.querySelectorAll('.sb-day').forEach(l => l.c
     currentLang = saved;
     const switcher = document.getElementById('lang-switcher');
     if (switcher) switcher.value = saved;
-    document.querySelectorAll('.lang-pill').forEach(btn => btn.classList.toggle('active', btn.dataset.lang === saved));
     applyTranslations();
     document.getElementById('step-label').textContent = t('step_of').replace('{n}', state.currentStep + 1);
   }
@@ -797,7 +785,7 @@ function resetApp() {
   document.getElementById('itinerary-view').style.display = 'none';
   document.getElementById('itinerary-header-extras').style.display = 'none';
   document.getElementById('results-action-bar').style.display = 'none';
-  document.getElementById('lang-switcher').style.display = 'none';
+  document.getElementById('lang-switcher').style.display = '';
   for (let i = 0; i < 5; i++) { const el = document.getElementById(`ls-${i}`); if(el){ el.className='loading-step'; if(i===0)el.classList.add('active'); }}
   document.getElementById('onboarding-view').style.display = 'flex';
   document.getElementById('onboarding-progress').style.display = 'flex';
