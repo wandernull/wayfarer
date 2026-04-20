@@ -222,8 +222,8 @@ input::placeholder { color: var(--step-inactive); }
   .city-departure-inputs { grid-template-columns: 1fr 80px 52px 30px; gap: 7px; }
   .city-secondary .departure-input { padding: 12px 4px; }
 }
-#lang-onboarding-row { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 20px 24px 0; flex-wrap: wrap; width: 100%; max-width: 620px; }
-.lang-pill { padding: 5px 12px; border: 1.5px solid var(--border); border-radius: 100px; background: var(--surface); font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
+#lang-onboarding-row { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 12px; width: 100%; max-width: 620px; padding: 16px 24px 0; }
+.lang-pill { padding: 4px 10px; border: 1.5px solid var(--border); border-radius: 20px; background: var(--surface); font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 0.15s; }
 .lang-pill:hover { border-color: var(--accent); color: var(--accent); }
 .lang-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 #lang-switcher { width: auto; padding: 6px 10px; font-size: 13px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-primary); cursor: pointer; font-family: 'DM Sans', sans-serif; flex-shrink: 0; }
