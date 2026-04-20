@@ -502,6 +502,8 @@ function getTripProfile() {
     nights: cityData.map(d => d.nights),
     arrivalTimes: cityData.map(d => d.arrivalTime),
     airports: cityData.map(d => d.arrivalAirport),
+    lats: rows.filter(r => r.querySelector('.city-input')?.value.trim()).map(r => parseFloat(r.dataset.lat) || 0),
+    lons: rows.filter(r => r.querySelector('.city-input')?.value.trim()).map(r => parseFloat(r.dataset.lon) || 0),
     startDate: document.getElementById('startDate').value,
     adults: state.adults, kids: state.kids,
     tripTypes: [...document.querySelectorAll('#tripType .chip.selected')].map(c => c.textContent.trim()),
@@ -543,6 +545,7 @@ async function startGeneration() {
     await new Promise(r => setTimeout(r, 500));
     state.tripData = { profile, itinerary };
     showItinerary(profile, itinerary);
+    enrichPlaces(profile, itinerary);
   } catch (err) {
     clearInterval(stepInterval);
     document.getElementById('loading-view').style.display = 'none';
@@ -595,16 +598,17 @@ async function callClaude(profile, customPrompt) {
   if (m) return JSON.parse(m[0]);
   throw new Error('Could not parse itinerary JSON from response');
 }
-function renderEvents(events, cityName, country) {
+function renderEvents(events, idPrefix, cityName, country) {
   return events.map((ev,i) => {
     const isLast = i === events.length-1;
     const connector = isLast ? '' : '<div class="t-connector"></div>';
     if (ev.isTravel) return `<div class="t-event"><div class="t-time-col"><div class="t-dot travel"></div>${connector}</div><div class="t-body"><div class="t-card travel-card"><div class="travel-row"><span class="t-time">${ev.time}</span><span style="font-size:15px">${ev.travelMode}</span><span style="font-size:13px;color:var(--text-secondary)">${ev.travelDesc}</span><span class="travel-dur">${ev.travelDuration}</span></div></div></div></div>`;
     const dotClass = {meal:'meal',sight:'sight',hotel:'hotel',end:'end'}[ev.type]||'sight';
     const tagClass = {meal:'tag-meal',sight:'tag-sight',hotel:'tag-hotel',end:'tag-end',travel:'tag-travel'}[ev.type]||'tag-sight';
+    const dataId = idPrefix ? ` data-event-id="${idPrefix}-evt${i}"` : '';
     const mapsQ = encodeURIComponent(`${ev.name} ${cityName||''} ${country||''}`.trim());
     const mapsLink = `<a class="maps-link" href="https://www.google.com/maps/search/${mapsQ}" target="_blank" rel="noopener">📍 Find on Maps</a>`;
-    return `<div class="t-event"><div class="t-time-col"><div class="t-dot ${dotClass}"></div>${connector}</div><div class="t-body"><div class="t-card"><div class="t-top"><span class="t-time">${ev.time}</span><span class="t-tag ${tagClass}">${ev.tag}</span></div><div class="t-name">${ev.name}</div>${ev.desc?`<div class="t-desc">${ev.desc}</div>`:''}<div class="t-details">${(ev.details||[]).map(d=>`<span class="t-pill">${d}</span>`).join('')}</div>${mapsLink}</div></div></div>`;
+    return `<div class="t-event"><div class="t-time-col"><div class="t-dot ${dotClass}"></div>${connector}</div><div class="t-body"><div class="t-card"${dataId}><div class="t-top"><span class="t-time">${ev.time}</span><span class="t-tag ${tagClass}">${ev.tag}</span></div><div class="t-name">${ev.name}</div>${ev.desc?`<div class="t-desc">${ev.desc}</div>`:''}<div class="t-details">${(ev.details||[]).map(d=>`<span class="t-pill">${d}</span>`).join('')}</div>${mapsLink}</div></div></div>`;
   }).join('');
 }
 function showItinerary(profile, itinerary) {
@@ -628,7 +632,7 @@ function showItinerary(profile, itinerary) {
     if (ci > 0) { mainHtml += `<div class="city-divider"><div class="city-divider-line"></div><div class="city-divider-label">→ ${city.name}</div><div class="city-divider-line"></div></div>`; }
     city.days.forEach(day => {
       dc++; const d = dc;
-      mainHtml += `<div class="day-section" id="day-${d}"><div class="day-header"><div><div class="day-eyebrow">${t('day_label')} ${day.dayNumber} · ${city.name} · ${day.date}</div><div class="day-title">${day.title}</div><div class="day-subtitle">${day.subtitle}</div></div><div class="weather-badge"><div class="weather-icon">${day.weather.icon}</div><div><div class="weather-temp">${day.weather.temp}</div><div class="weather-desc">${day.weather.desc}</div></div></div></div><div class="day-strip"><div class="strip-item"><div class="strip-val">${day.stats.activities}</div><div class="strip-lbl">${t('strip_activities')}</div></div><div class="strip-item"><div class="strip-val">${day.stats.meals}</div><div class="strip-lbl">${t('strip_meals')}</div></div><div class="strip-item"><div class="strip-val">${day.stats.walking}</div><div class="strip-lbl">${t('strip_walking')}</div></div><div class="strip-item"><div class="strip-val">${day.stats.spend}</div><div class="strip-lbl">${t('strip_spend')}</div></div></div><div class="timeline">${renderEvents(day.events, city.name, city.country)}</div>${day.tips?.length?`<div class="tips-box"><div class="tips-title">${t('local_tips')}</div><ul class="tips-list">${day.tips.map(tip=>`<li>${tip}</li>`).join('')}</ul></div>`:''}<div class="regen-row"><button class="regen-btn" onclick="regenDay(${d},'${city.name}',${day.dayNumber})">${t('regen_day')}</button></div></div>`;
+      mainHtml += `<div class="day-section" id="day-${d}"><div class="day-header"><div><div class="day-eyebrow">${t('day_label')} ${day.dayNumber} · ${city.name} · ${day.date}</div><div class="day-title">${day.title}</div><div class="day-subtitle">${day.subtitle}</div></div><div class="weather-badge"><div class="weather-icon">${day.weather.icon}</div><div><div class="weather-temp">${day.weather.temp}</div><div class="weather-desc">${day.weather.desc}</div></div></div></div><div class="day-strip"><div class="strip-item"><div class="strip-val">${day.stats.activities}</div><div class="strip-lbl">${t('strip_activities')}</div></div><div class="strip-item"><div class="strip-val">${day.stats.meals}</div><div class="strip-lbl">${t('strip_meals')}</div></div><div class="strip-item"><div class="strip-val">${day.stats.walking}</div><div class="strip-lbl">${t('strip_walking')}</div></div><div class="strip-item"><div class="strip-val">${day.stats.spend}</div><div class="strip-lbl">${t('strip_spend')}</div></div></div><div class="timeline">${renderEvents(day.events, `day${d}`, city.name, city.country)}</div>${day.tips?.length?`<div class="tips-box"><div class="tips-title">${t('local_tips')}</div><ul class="tips-list">${day.tips.map(tip=>`<li>${tip}</li>`).join('')}</ul></div>`:''}<div class="regen-row"><button class="regen-btn" onclick="regenDay(${d},'${city.name}',${day.dayNumber})">${t('regen_day')}</button></div></div>`;
     });
   });
   document.getElementById('itMain').innerHTML = mainHtml;
@@ -780,6 +784,43 @@ async function populateAirportSelect(row, cityLat, cityLon) {
   } catch {
     sels.forEach(s => { s.innerHTML = '<option value="">No airport (opt.)</option>'; s.disabled = false; });
   }
+}
+async function enrichPlaces(profile, itinerary) {
+  const ENRICHABLE = new Set(['meal', 'sight', 'bar', 'nightlife', 'activity']);
+  const events = [];
+  let dc = 0;
+  itinerary.cities.forEach((city, ci) => {
+    const lat = profile.lats?.[ci] || 0;
+    const lon = profile.lons?.[ci] || 0;
+    city.days.forEach(day => {
+      dc++;
+      day.events.forEach((ev, ei) => {
+        if (!ev.isTravel && ENRICHABLE.has(ev.type)) {
+          events.push({ id: `day${dc}-evt${ei}`, title: ev.name, type: ev.type, city: city.name, lat, lon });
+        }
+      });
+    });
+  });
+  if (!events.length) return;
+  try {
+    const res = await fetch('/api/places', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ events }) });
+    if (!res.ok) return;
+    const data = await res.json();
+    data.events.forEach(enriched => {
+      const card = document.querySelector(`[data-event-id="${enriched.id}"]`);
+      if (!card) return;
+      if (enriched.realName) card.querySelector('.t-name').textContent = enriched.realName;
+      if (enriched.address) {
+        card.querySelectorAll('.t-pill').forEach(pill => {
+          if (pill.textContent.startsWith('📍')) pill.textContent = `📍 ${enriched.address}`;
+        });
+      }
+      if (enriched.mapsUrl) {
+        const link = card.querySelector('.maps-link');
+        if (link) link.href = enriched.mapsUrl;
+      }
+    });
+  } catch {}
 }
 function resetApp() {
   document.getElementById('itinerary-view').style.display = 'none';
