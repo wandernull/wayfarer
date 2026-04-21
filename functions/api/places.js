@@ -6,7 +6,7 @@ export async function onRequestPost(context) {
   const { events } = body;
 
   if (!HERE_API_KEY) {
-    return new Response(JSON.stringify({ results: [] }), {
+    return new Response(JSON.stringify({ events: [] }), {
       headers: { 'Content-Type': 'application/json' }
     });
   }
@@ -69,7 +69,7 @@ export async function onRequestPost(context) {
     }
   }));
 
-  return new Response(JSON.stringify({ results }), {
+  return new Response(JSON.stringify({ events: results }), {
     headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
   });
 }
