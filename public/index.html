@@ -35,7 +35,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 #onboarding-view { padding-top: var(--header-h); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding-bottom: 40px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; width: 100%; max-width: 620px; padding: 50px 54px; animation: fadeUp 0.38s ease both; margin: 40px 24px; }
 @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
-.step-badge { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+.step-badge { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 10px; }
 .card h2 { font-family: 'DM Serif Display', serif; font-size: 28px; line-height: 1.25; margin-bottom: 6px; }
 .card .subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 32px; line-height: 1.6; }
 label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 7px; letter-spacing: 0.2px; }
@@ -52,10 +52,10 @@ input::placeholder { color: var(--step-inactive); }
 .city-list { display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px; }
 .city-row { display: flex; align-items: flex-start; gap: 9px; }
 .city-primary { flex: 2; min-width: 0; }
-.city-primary-header { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 7px; }
+.city-primary-header { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 7px; }
 .city-secondary { flex: 1; min-width: 0; }
 .city-secondary-headers, .city-secondary-inputs { display: grid; grid-template-columns: 1fr 90px 68px 30px; gap: 9px; align-items: center; }
-.city-secondary-headers { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 7px; }
+.city-secondary-headers { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 7px; }
 .sh-lands, .sh-nights { text-align: center; }
 .city-secondary-inputs input { width: 100%; min-width: 0; }
 .city-secondary .airport-select { padding: 12px 6px; }
@@ -65,7 +65,7 @@ input::placeholder { color: var(--step-inactive); }
 .city-row .remove-btn { height: 30px; width: 30px; border: none; background: none; color: var(--step-inactive); font-size: 20px; cursor: pointer; border-radius: 6px; transition: color 0.2s, background 0.2s; display: flex; align-items: center; justify-content: center; }
 .city-row .remove-btn:hover { color: var(--danger); background: #fdf2f2; }
 .city-departure-wrap { margin-top: 7px; padding-top: 7px; border-top: 1px dashed var(--border); }
-.city-departure-header { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 5px; }
+.city-departure-header { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 5px; }
 .city-departure-inputs { display: grid; grid-template-columns: 1fr 90px 68px 30px; gap: 9px; align-items: center; }
 .city-secondary .departure-input { padding: 12px 6px; text-align: center; }
 .add-city-btn { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--accent); background: none; border: 1.5px dashed var(--accent); border-radius: 10px; padding: 10px 18px; cursor: pointer; transition: background 0.18s; width: 100%; margin-bottom: 22px; }
@@ -93,7 +93,7 @@ input::placeholder { color: var(--step-inactive); }
 .budget-option .desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
 .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
 .summary-item { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
-.summary-item .s-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 5px; }
+.summary-item .s-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 5px; }
 .summary-item .s-value { font-size: 14px; font-weight: 600; }
 .summary-cities { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
 .city-route-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 7px; }
@@ -123,7 +123,7 @@ input::placeholder { color: var(--step-inactive); }
 .it-sidebar { width: var(--sidebar-w); position: fixed; top: var(--header-h); left: 0; bottom: 0; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 24px 0; z-index: 100; }
 .it-sidebar::-webkit-scrollbar { width: 3px; }
 .it-sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-.sb-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-secondary); padding: 0 22px; margin-bottom: 8px; display: block; }
+.sb-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--text-secondary); padding: 0 22px; margin-bottom: 8px; display: block; }
 .sb-city-header { display: flex; align-items: center; gap: 8px; padding: 10px 22px 5px; }
 .sb-city-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .sb-city-name { font-size: 13px; font-weight: 600; }
@@ -142,7 +142,7 @@ input::placeholder { color: var(--step-inactive); }
 .it-main { margin-left: var(--sidebar-w); flex: 1; padding: 40px 48px 100px; max-width: calc(100% - var(--sidebar-w)); }
 .day-section { margin-bottom: 52px; animation: fadeUp 0.45s ease both; }
 .day-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; padding-bottom: 22px; border-bottom: 1px solid var(--border); gap: 16px; }
-.day-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); margin-bottom: 5px; }
+.day-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 5px; }
 .day-title { font-family: 'DM Serif Display', serif; font-size: 26px; line-height: 1.2; }
 .day-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 5px; }
 .weather-badge { display: flex; align-items: center; gap: 7px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 14px; font-size: 13px; flex-shrink: 0; }
@@ -172,7 +172,7 @@ input::placeholder { color: var(--step-inactive); }
 .t-card.travel-card:hover { transform: none; box-shadow: none; }
 .t-top { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
 .t-time { font-size: 11px; font-weight: 700; color: var(--text-secondary); letter-spacing: 0.5px; min-width: 48px; }
-.t-tag { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 2px 7px; border-radius: 100px; }
+.t-tag { font-size: 10px; font-weight: 700; letter-spacing: 1px; padding: 2px 7px; border-radius: 100px; }
 .tag-meal { background: #FEF3E2; color: #D47B20; }
 .tag-sight { background: var(--accent-light); color: var(--accent); }
 .tag-travel { background: #F0EFEE; color: var(--text-secondary); }
@@ -187,7 +187,7 @@ input::placeholder { color: var(--step-inactive); }
 .travel-row { display: flex; align-items: center; gap: 9px; }
 .travel-dur { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: #F0EFEE; padding: 2px 9px; border-radius: 100px; }
 .tips-box { background: var(--accent-light); border: 1px solid rgba(45,106,79,0.15); border-radius: 13px; padding: 16px 20px; margin-top: 14px; margin-bottom: 24px; }
-.tips-title { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+.tips-title { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--accent); margin-bottom: 8px; }
 .tips-list { list-style: none; display: flex; flex-direction: column; gap: 5px; }
 .tips-list li { font-size: 13px; color: #2a5c44; display: flex; gap: 7px; align-items: flex-start; line-height: 1.5; }
 .tips-list li::before { content: '→'; flex-shrink: 0; opacity: 0.6; }
@@ -293,17 +293,17 @@ input::placeholder { color: var(--step-inactive); }
 </div>
 <div id="onboarding-view">
   <div class="card" id="step-0">
-    <div class="step-badge" data-i18n="step1_badge">Step 1 · Destination</div>
+    <div class="step-badge" data-i18n="step1_badge" data-i18n-upper>Step 1 · Destination</div>
     <h2 data-i18n="step1_h2">Where are you headed?</h2>
     <p class="subtitle" data-i18n="step1_subtitle">Add one or more cities. Set how many nights in each.</p>
     <div class="city-list" id="cityList">
       <div class="city-row">
         <div class="city-primary">
-          <div class="city-primary-header" data-i18n="city_country_header">City, Country</div>
+          <div class="city-primary-header" data-i18n="city_country_header" data-i18n-upper>City, Country</div>
           <div class="autocomplete-wrap"><input type="text" placeholder="e.g. Paris, France" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder"/></div>
         </div>
         <div class="city-secondary">
-          <div class="city-secondary-headers"><span class="sh-airport" data-i18n="airport_opt">Airport (opt.)</span><span class="sh-lands" data-i18n="lands_header">🛬 Lands</span><span class="sh-nights" data-i18n="nights_header">Nights</span></div>
+          <div class="city-secondary-headers"><span class="sh-airport" data-i18n="airport_opt" data-i18n-upper>Airport (opt.)</span><span class="sh-lands" data-i18n="lands_header" data-i18n-upper>🛬 Lands</span><span class="sh-nights" data-i18n="nights_header" data-i18n-upper>Nights</span></div>
           <div class="city-secondary-inputs">
             <select class="airport-select arrival-airport-select" disabled><option value="" data-i18n="select_city_first">Select city first</option></select>
             <input type="time" class="arrival-input"/>
@@ -311,7 +311,7 @@ input::placeholder { color: var(--step-inactive); }
             <button class="remove-btn" onclick="removeCity(this)">×</button>
           </div>
           <div class="city-departure-wrap">
-            <div class="city-departure-header" data-i18n="departs_header">🛫 Departs</div>
+            <div class="city-departure-header" data-i18n="departs_header" data-i18n-upper>🛫 Departs</div>
             <div class="city-departure-inputs">
               <select class="airport-select departure-airport-select" disabled><option value="" data-i18n="select_city_first">Select city first</option></select>
               <input type="time" class="departure-input"/>
@@ -326,7 +326,7 @@ input::placeholder { color: var(--step-inactive); }
     <div class="nav-row"><span></span><button class="btn-next" onclick="goTo(1)" data-i18n="continue_btn">Continue →</button></div>
   </div>
   <div class="card" id="step-1" style="display:none;">
-    <div class="step-badge" data-i18n="step2_badge">Step 2 · Your Group</div>
+    <div class="step-badge" data-i18n="step2_badge" data-i18n-upper>Step 2 · Your Group</div>
     <h2 data-i18n="step2_h2">Who's travelling?</h2>
     <p class="subtitle" data-i18n="step2_subtitle">We'll tailor dining, activities, and pacing to your group.</p>
     <div class="two-col">
@@ -353,7 +353,7 @@ input::placeholder { color: var(--step-inactive); }
     <div class="nav-row"><button class="btn-back" onclick="goTo(0)" data-i18n="back_btn">← Back</button><button class="btn-next" onclick="goTo(2)" data-i18n="continue_btn">Continue →</button></div>
   </div>
   <div class="card" id="step-2" style="display:none;">
-    <div class="step-badge" data-i18n="step3_badge">Step 3 · Budget & Stay</div>
+    <div class="step-badge" data-i18n="step3_badge" data-i18n-upper>Step 3 · Budget & Stay</div>
     <h2 data-i18n="step3_h2">What's your budget like?</h2>
     <p class="subtitle" data-i18n="step3_subtitle">Shapes accommodation, restaurants, and activities we suggest.</p>
     <div class="budget-track" id="budget">
@@ -372,7 +372,7 @@ input::placeholder { color: var(--step-inactive); }
     <div class="nav-row"><button class="btn-back" onclick="goTo(1)" data-i18n="back_btn">← Back</button><button class="btn-next" onclick="goTo(3)" data-i18n="continue_btn">Continue →</button></div>
   </div>
   <div class="card" id="step-3" style="display:none;">
-    <div class="step-badge" data-i18n="step4_badge">Step 4 · Preferences</div>
+    <div class="step-badge" data-i18n="step4_badge" data-i18n-upper>Step 4 · Preferences</div>
     <h2 data-i18n="step4_h2">Any special needs?</h2>
     <p class="subtitle" data-i18n="step4_subtitle">Personalise every meal and activity recommendation.</p>
     <span class="chip-label" data-i18n="dietary_req">Dietary requirements</span>
@@ -404,11 +404,11 @@ input::placeholder { color: var(--step-inactive); }
     <div class="nav-row"><button class="btn-back" onclick="goTo(2)" data-i18n="back_btn">← Back</button><button class="btn-next" onclick="goTo(4)" data-i18n="review_trip_btn">Review trip →</button></div>
   </div>
   <div class="card" id="step-4" style="display:none;">
-    <div class="step-badge" data-i18n="step5_badge">Step 5 · Review</div>
+    <div class="step-badge" data-i18n="step5_badge" data-i18n-upper>Step 5 · Review</div>
     <h2 data-i18n="step5_h2">Your trip at a glance</h2>
     <p class="subtitle" data-i18n="step5_subtitle">Everything look right? Let's build your itinerary.</p>
     <div class="summary-cities">
-      <div class="s-label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-secondary);margin-bottom:6px;" data-i18n="route_label">Route</div>
+      <div class="s-label" style="font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--text-secondary);margin-bottom:6px;" data-i18n="route_label" data-i18n-upper>Route</div>
       <div class="city-route-preview" id="summaryRoute"></div>
     </div>
     <div class="summary-grid" id="summaryGrid"></div>
@@ -443,9 +443,11 @@ input::placeholder { color: var(--step-inactive); }
 <script>
 let currentLang = 'en';
 const langNames = { en: 'English', tr: 'Turkish', es: 'Spanish', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese' };
+const LOCALE_TAG = { tr: 'tr-TR', de: 'de-DE', fr: 'fr-FR', es: 'es-ES', it: 'it-IT', pt: 'pt-PT', en: 'en-US' };
 function t(key) { return (translations[currentLang] || translations['en'])[key] || translations['en'][key] || key; }
+function u(str) { return str.toLocaleUpperCase(LOCALE_TAG[currentLang] || 'en-US'); }
 function applyTranslations() {
-  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n]').forEach(el => { const v = t(el.dataset.i18n); el.textContent = el.hasAttribute('data-i18n-upper') ? u(v) : v; });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
 }
 function changeLang(lang) {
@@ -477,7 +479,7 @@ function updateDots() {
 }
 function addCity() {
   const row = document.createElement('div'); row.className = 'city-row';
-  row.innerHTML = `<div class="city-primary"><div class="city-primary-header" data-i18n="city_country_header">${t('city_country_header')}</div><div class="autocomplete-wrap"><input type="text" placeholder="${t('city_placeholder_2')}" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder_2"/></div></div><div class="city-secondary"><div class="city-secondary-headers"><span class="sh-airport" data-i18n="airport_opt">${t('airport_opt')}</span><span class="sh-lands" data-i18n="lands_header">${t('lands_header')}</span><span class="sh-nights" data-i18n="nights_header">${t('nights_header')}</span></div><div class="city-secondary-inputs"><select class="airport-select arrival-airport-select" disabled><option value="" data-i18n="select_city_first">${t('select_city_first')}</option></select><input type="time" class="arrival-input"/><input type="number" min="1" max="30" value="3" class="nights-input"/><button class="remove-btn" onclick="removeCity(this)">×</button></div><div class="city-departure-wrap"><div class="city-departure-header" data-i18n="departs_header">${t('departs_header')}</div><div class="city-departure-inputs"><select class="airport-select departure-airport-select" disabled><option value="" data-i18n="select_city_first">${t('select_city_first')}</option></select><input type="time" class="departure-input"/><span></span><span></span></div></div></div>`;
+  row.innerHTML = `<div class="city-primary"><div class="city-primary-header" data-i18n="city_country_header" data-i18n-upper>${u(t('city_country_header'))}</div><div class="autocomplete-wrap"><input type="text" placeholder="${t('city_placeholder_2')}" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder_2"/></div></div><div class="city-secondary"><div class="city-secondary-headers"><span class="sh-airport" data-i18n="airport_opt" data-i18n-upper>${u(t('airport_opt'))}</span><span class="sh-lands" data-i18n="lands_header" data-i18n-upper>${u(t('lands_header'))}</span><span class="sh-nights" data-i18n="nights_header" data-i18n-upper>${u(t('nights_header'))}</span></div><div class="city-secondary-inputs"><select class="airport-select arrival-airport-select" disabled><option value="" data-i18n="select_city_first">${t('select_city_first')}</option></select><input type="time" class="arrival-input"/><input type="number" min="1" max="30" value="3" class="nights-input"/><button class="remove-btn" onclick="removeCity(this)">×</button></div><div class="city-departure-wrap"><div class="city-departure-header" data-i18n="departs_header" data-i18n-upper>${u(t('departs_header'))}</div><div class="city-departure-inputs"><select class="airport-select departure-airport-select" disabled><option value="" data-i18n="select_city_first">${t('select_city_first')}</option></select><input type="time" class="departure-input"/><span></span><span></span></div></div></div>`;
   document.getElementById('cityList').appendChild(row);
   initAutocomplete(row.querySelector('.city-input'));
 }
@@ -523,7 +525,7 @@ function buildSummary() {
   document.getElementById('summaryRoute').innerHTML = p.cities.length ? p.cities.map((c,i) => `${i>0?'<span class="route-arrow">→</span>':''}<span class="city-tag">${c||'—'} <span style="opacity:.6;font-weight:400">${p.nights[i]}n</span></span>`).join('') : `<span style="color:var(--text-secondary);font-size:13px;">${t('sum_no_cities')}</span>`;
   const totalNights = p.nights.reduce((a,b)=>a+b,0);
   const groupStr = `${p.adults} ${p.adults>1?t('adults_p'):t('adult_s')}${p.kids>0?`, ${p.kids} ${p.kids>1?t('kids_p'):t('kid_s')}`:' '+t('no_kids')}`;
-  document.getElementById('summaryGrid').innerHTML = `<div class="summary-item"><div class="s-label">${t('sum_group')}</div><div class="s-value">${groupStr}</div></div><div class="summary-item"><div class="s-label">${t('sum_duration')}</div><div class="s-value">${totalNights} ${t('nights_unit')}</div></div><div class="summary-item"><div class="s-label">${t('sum_budget')}</div><div class="s-value">${p.budget}</div></div><div class="summary-item"><div class="s-label">${t('sum_pace')}</div><div class="s-value">${p.pace}</div></div><div class="summary-item" style="grid-column:1/-1"><div class="s-label">${t('sum_vibe')}</div><div class="s-value">${p.tripTypes.join(', ')||t('not_specified')}</div></div><div class="summary-item" style="grid-column:1/-1"><div class="s-label">${t('sum_diet')}</div><div class="s-value">${p.diet.join(', ')||t('no_restrictions')}</div></div>`;
+  document.getElementById('summaryGrid').innerHTML = `<div class="summary-item"><div class="s-label">${u(t('sum_group'))}</div><div class="s-value">${groupStr}</div></div><div class="summary-item"><div class="s-label">${u(t('sum_duration'))}</div><div class="s-value">${totalNights} ${t('nights_unit')}</div></div><div class="summary-item"><div class="s-label">${u(t('sum_budget'))}</div><div class="s-value">${p.budget}</div></div><div class="summary-item"><div class="s-label">${u(t('sum_pace'))}</div><div class="s-value">${p.pace}</div></div><div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_vibe'))}</div><div class="s-value">${p.tripTypes.join(', ')||t('not_specified')}</div></div><div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_diet'))}</div><div class="s-value">${p.diet.join(', ')||t('no_restrictions')}</div></div>`;
 }
 async function startGeneration() {
   const profile = getTripProfile();
@@ -608,7 +610,7 @@ function renderEvents(events, idPrefix, cityName, country) {
     const dataId = idPrefix ? ` data-event-id="${idPrefix}-evt${i}"` : '';
     const mapsQ = encodeURIComponent(`${ev.name} ${cityName||''} ${country||''}`.trim());
     const mapsLink = `<a class="maps-link" href="https://www.google.com/maps/search/${mapsQ}" target="_blank" rel="noopener">📍 Find on Maps</a>`;
-    return `<div class="t-event"><div class="t-time-col"><div class="t-dot ${dotClass}"></div>${connector}</div><div class="t-body"><div class="t-card"${dataId}><div class="t-top"><span class="t-time">${ev.time}</span><span class="t-tag ${tagClass}">${ev.tag}</span></div><div class="t-name">${ev.name}</div>${ev.desc?`<div class="t-desc">${ev.desc}</div>`:''}<div class="t-details">${(ev.details||[]).map(d=>`<span class="t-pill">${d}</span>`).join('')}</div>${mapsLink}</div></div></div>`;
+    return `<div class="t-event"><div class="t-time-col"><div class="t-dot ${dotClass}"></div>${connector}</div><div class="t-body"><div class="t-card"${dataId}><div class="t-top"><span class="t-time">${ev.time}</span><span class="t-tag ${tagClass}">${u(ev.tag)}</span></div><div class="t-name">${ev.name}</div>${ev.desc?`<div class="t-desc">${ev.desc}</div>`:''}<div class="t-details">${(ev.details||[]).map(d=>`<span class="t-pill">${d}</span>`).join('')}</div>${mapsLink}</div></div></div>`;
   }).join('');
 }
 function showItinerary(profile, itinerary) {
@@ -617,7 +619,7 @@ function showItinerary(profile, itinerary) {
   document.getElementById('results-action-bar').style.display = 'flex';
   document.getElementById('lang-switcher').style.display = 'none';
   document.getElementById('header-route').innerHTML = itinerary.cities.map((c,i) => `${i>0?'<span class="route-sep">→</span>':''}<span class="route-city">${c.name}</span>`).join('');
-  let sbHtml = `<span class="sb-label">${t('sb_itinerary')}</span>`;
+  let sbHtml = `<span class="sb-label">${u(t('sb_itinerary'))}</span>`;
   let dayCounter = 0;
   itinerary.cities.forEach(city => {
     sbHtml += `<div><div class="sb-city-header"><div class="sb-city-dot" style="background:${city.dotColor}"></div><div class="sb-city-name">${city.name}</div><div class="sb-city-nights">${city.nights}n</div></div>`;
@@ -625,14 +627,14 @@ function showItinerary(profile, itinerary) {
     sbHtml += `</div>`;
   });
   const sbAdults = `${profile.adults} ${profile.adults>1?t('adults_p'):t('adult_s')}${profile.kids>0?` + ${profile.kids} ${profile.kids>1?t('kids_p'):t('kid_s')}`:'' }`;
-  sbHtml += `<div class="sb-divider"></div><span class="sb-label">${t('sb_summary')}</span><div class="sb-stats"><div class="sb-stat"><span class="sb-stat-l">${t('sb_travellers')}</span><span class="sb-stat-v">${sbAdults}</span></div><div class="sb-stat"><span class="sb-stat-l">${t('sb_nights')}</span><span class="sb-stat-v">${profile.nights.reduce((a,b)=>a+b,0)}</span></div><div class="sb-stat"><span class="sb-stat-l">${t('sb_budget')}</span><span class="sb-stat-v">${profile.budget}</span></div><div class="sb-stat"><span class="sb-stat-l">${t('sb_pace')}</span><span class="sb-stat-v">${profile.pace}</span></div></div>`;
+  sbHtml += `<div class="sb-divider"></div><span class="sb-label">${u(t('sb_summary'))}</span><div class="sb-stats"><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_travellers'))}</span><span class="sb-stat-v">${sbAdults}</span></div><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_nights'))}</span><span class="sb-stat-v">${profile.nights.reduce((a,b)=>a+b,0)}</span></div><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_budget'))}</span><span class="sb-stat-v">${profile.budget}</span></div><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_pace'))}</span><span class="sb-stat-v">${profile.pace}</span></div></div>`;
   document.getElementById('itSidebar').innerHTML = sbHtml;
   let mainHtml = ''; let dc = 0;
   itinerary.cities.forEach((city,ci) => {
     if (ci > 0) { mainHtml += `<div class="city-divider"><div class="city-divider-line"></div><div class="city-divider-label">→ ${city.name}</div><div class="city-divider-line"></div></div>`; }
     city.days.forEach(day => {
       dc++; const d = dc;
-      mainHtml += `<div class="day-section" id="day-${d}"><div class="day-header"><div><div class="day-eyebrow">${t('day_label')} ${day.dayNumber} · ${city.name} · ${day.date}</div><div class="day-title">${day.title}</div><div class="day-subtitle">${day.subtitle}</div></div><div class="weather-badge"><div class="weather-icon">${day.weather.icon}</div><div><div class="weather-temp">${day.weather.temp}</div><div class="weather-desc">${day.weather.desc}</div></div></div></div><div class="day-strip"><div class="strip-item"><div class="strip-val">${day.stats.activities}</div><div class="strip-lbl">${t('strip_activities')}</div></div><div class="strip-item"><div class="strip-val">${day.stats.meals}</div><div class="strip-lbl">${t('strip_meals')}</div></div><div class="strip-item"><div class="strip-val">${day.stats.walking}</div><div class="strip-lbl">${t('strip_walking')}</div></div><div class="strip-item"><div class="strip-val">${day.stats.spend}</div><div class="strip-lbl">${t('strip_spend')}</div></div></div><div class="timeline">${renderEvents(day.events, `day${d}`, city.name, city.country)}</div>${day.tips?.length?`<div class="tips-box"><div class="tips-title">${t('local_tips')}</div><ul class="tips-list">${day.tips.map(tip=>`<li>${tip}</li>`).join('')}</ul></div>`:''}<div class="regen-row"><button class="regen-btn" onclick="regenDay(${d},'${city.name}',${day.dayNumber})">${t('regen_day')}</button></div></div>`;
+      mainHtml += `<div class="day-section" id="day-${d}"><div class="day-header"><div><div class="day-eyebrow">${u(`${t('day_label')} ${day.dayNumber} · ${city.name} · ${day.date}`)}</div><div class="day-title">${day.title}</div><div class="day-subtitle">${day.subtitle}</div></div><div class="weather-badge"><div class="weather-icon">${day.weather.icon}</div><div><div class="weather-temp">${day.weather.temp}</div><div class="weather-desc">${day.weather.desc}</div></div></div></div><div class="day-strip"><div class="strip-item"><div class="strip-val">${day.stats.activities}</div><div class="strip-lbl">${u(t('strip_activities'))}</div></div><div class="strip-item"><div class="strip-val">${day.stats.meals}</div><div class="strip-lbl">${u(t('strip_meals'))}</div></div><div class="strip-item"><div class="strip-val">${day.stats.walking}</div><div class="strip-lbl">${u(t('strip_walking'))}</div></div><div class="strip-item"><div class="strip-val">${day.stats.spend}</div><div class="strip-lbl">${u(t('strip_spend'))}</div></div></div><div class="timeline">${renderEvents(day.events, `day${d}`, city.name, city.country)}</div>${day.tips?.length?`<div class="tips-box"><div class="tips-title">${u(t('local_tips'))}</div><ul class="tips-list">${day.tips.map(tip=>`<li>${tip}</li>`).join('')}</ul></div>`:''}<div class="regen-row"><button class="regen-btn" onclick="regenDay(${d},'${city.name}',${day.dayNumber})">${t('regen_day')}</button></div></div>`;
     });
   });
   document.getElementById('itMain').innerHTML = mainHtml;
