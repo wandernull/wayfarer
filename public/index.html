@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Jounee – AI Travel Planner</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
-<script src="/translations.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -23,8 +22,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .step-dot.active { background: var(--accent); transform: scale(1.35); }
 .step-dot.done { background: var(--accent); opacity: 0.38; }
 .step-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; margin-left: 8px; }
-#itinerary-header-extras { display: none; align-items: center; gap: 10px; margin-left: auto; overflow: hidden; }
-#results-action-bar { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 150; background: rgba(247,245,242,0.96); backdrop-filter: blur(14px); border-top: 1px solid var(--border); padding: 12px 36px; align-items: center; justify-content: flex-end; gap: 10px; }
+#itinerary-header-extras { display: none; align-items: center; gap: 10px; margin-left: auto; }
 .trip-route { display: flex; align-items: center; gap: 6px; }
 .route-city { background: var(--accent-light); color: var(--accent); padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; }
 .route-sep { color: var(--border); font-size: 14px; }
@@ -35,7 +33,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 #onboarding-view { padding-top: var(--header-h); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding-bottom: 40px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; width: 100%; max-width: 620px; padding: 50px 54px; animation: fadeUp 0.38s ease both; margin: 40px 24px; }
 @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
-.step-badge { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 10px; }
+.step-badge { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
 .card h2 { font-family: 'DM Serif Display', serif; font-size: 28px; line-height: 1.25; margin-bottom: 6px; }
 .card .subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 32px; line-height: 1.6; }
 label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 7px; letter-spacing: 0.2px; }
@@ -52,22 +50,17 @@ input::placeholder { color: var(--step-inactive); }
 .city-list { display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px; }
 .city-row { display: flex; align-items: flex-start; gap: 9px; }
 .city-primary { flex: 2; min-width: 0; }
-.city-primary-header { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 7px; }
+.city-primary-header { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 7px; }
 .city-secondary { flex: 1; min-width: 0; }
 .city-secondary-headers, .city-secondary-inputs { display: grid; grid-template-columns: 1fr 90px 68px 30px; gap: 9px; align-items: center; }
-.city-secondary-headers { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 7px; }
+.city-secondary-headers { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 7px; }
 .sh-lands, .sh-nights { text-align: center; }
 .city-secondary-inputs input { width: 100%; min-width: 0; }
-.city-secondary .airport-select { padding: 12px 6px; }
-.airport-select:disabled { opacity: 0.5; cursor: not-allowed; }
+.city-secondary .airport-input { padding: 12px 8px; }
 .city-secondary .arrival-input { padding: 12px 6px; text-align: center; }
 .city-secondary .nights-input { text-align: center; }
 .city-row .remove-btn { height: 30px; width: 30px; border: none; background: none; color: var(--step-inactive); font-size: 20px; cursor: pointer; border-radius: 6px; transition: color 0.2s, background 0.2s; display: flex; align-items: center; justify-content: center; }
 .city-row .remove-btn:hover { color: var(--danger); background: #fdf2f2; }
-.city-departure-wrap { margin-top: 7px; padding-top: 7px; border-top: 1px dashed var(--border); }
-.city-departure-header { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 5px; }
-.city-departure-inputs { display: grid; grid-template-columns: 1fr 90px 68px 30px; gap: 9px; align-items: center; }
-.city-secondary .departure-input { padding: 12px 6px; text-align: center; }
 .add-city-btn { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--accent); background: none; border: 1.5px dashed var(--accent); border-radius: 10px; padding: 10px 18px; cursor: pointer; transition: background 0.18s; width: 100%; margin-bottom: 22px; }
 .add-city-btn:hover { background: var(--accent-light); }
 .stepper { display: flex; align-items: center; border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg); width: fit-content; }
@@ -93,7 +86,7 @@ input::placeholder { color: var(--step-inactive); }
 .budget-option .desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
 .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
 .summary-item { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
-.summary-item .s-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 5px; }
+.summary-item .s-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 5px; }
 .summary-item .s-value { font-size: 14px; font-weight: 600; }
 .summary-cities { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
 .city-route-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 7px; }
@@ -123,7 +116,7 @@ input::placeholder { color: var(--step-inactive); }
 .it-sidebar { width: var(--sidebar-w); position: fixed; top: var(--header-h); left: 0; bottom: 0; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 24px 0; z-index: 100; }
 .it-sidebar::-webkit-scrollbar { width: 3px; }
 .it-sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-.sb-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--text-secondary); padding: 0 22px; margin-bottom: 8px; display: block; }
+.sb-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-secondary); padding: 0 22px; margin-bottom: 8px; display: block; }
 .sb-city-header { display: flex; align-items: center; gap: 8px; padding: 10px 22px 5px; }
 .sb-city-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .sb-city-name { font-size: 13px; font-weight: 600; }
@@ -139,10 +132,10 @@ input::placeholder { color: var(--step-inactive); }
 .sb-stat { display: flex; justify-content: space-between; }
 .sb-stat-l { font-size: 12px; color: var(--text-secondary); }
 .sb-stat-v { font-size: 13px; font-weight: 600; }
-.it-main { margin-left: var(--sidebar-w); flex: 1; padding: 40px 48px 100px; max-width: calc(100% - var(--sidebar-w)); }
+.it-main { margin-left: var(--sidebar-w); flex: 1; padding: 40px 48px; max-width: calc(100% - var(--sidebar-w)); }
 .day-section { margin-bottom: 52px; animation: fadeUp 0.45s ease both; }
 .day-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; padding-bottom: 22px; border-bottom: 1px solid var(--border); gap: 16px; }
-.day-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 5px; }
+.day-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent); margin-bottom: 5px; }
 .day-title { font-family: 'DM Serif Display', serif; font-size: 26px; line-height: 1.2; }
 .day-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 5px; }
 .weather-badge { display: flex; align-items: center; gap: 7px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 14px; font-size: 13px; flex-shrink: 0; }
@@ -172,7 +165,7 @@ input::placeholder { color: var(--step-inactive); }
 .t-card.travel-card:hover { transform: none; box-shadow: none; }
 .t-top { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
 .t-time { font-size: 11px; font-weight: 700; color: var(--text-secondary); letter-spacing: 0.5px; min-width: 48px; }
-.t-tag { font-size: 10px; font-weight: 700; letter-spacing: 1px; padding: 2px 7px; border-radius: 100px; }
+.t-tag { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 2px 7px; border-radius: 100px; }
 .tag-meal { background: #FEF3E2; color: #D47B20; }
 .tag-sight { background: var(--accent-light); color: var(--accent); }
 .tag-travel { background: #F0EFEE; color: var(--text-secondary); }
@@ -181,13 +174,11 @@ input::placeholder { color: var(--step-inactive); }
 .t-name { font-size: 14px; font-weight: 600; line-height: 1.3; }
 .t-desc { font-size: 13px; color: var(--text-secondary); margin-top: 3px; line-height: 1.55; }
 .t-details { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
-.maps-link { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--text-secondary); text-decoration: none; margin-top: 7px; transition: color 0.15s; }
-.maps-link:hover { color: var(--accent); }
 .t-pill { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); }
 .travel-row { display: flex; align-items: center; gap: 9px; }
 .travel-dur { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: #F0EFEE; padding: 2px 9px; border-radius: 100px; }
 .tips-box { background: var(--accent-light); border: 1px solid rgba(45,106,79,0.15); border-radius: 13px; padding: 16px 20px; margin-top: 14px; margin-bottom: 24px; }
-.tips-title { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--accent); margin-bottom: 8px; }
+.tips-title { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
 .tips-list { list-style: none; display: flex; flex-direction: column; gap: 5px; }
 .tips-list li { font-size: 13px; color: #2a5c44; display: flex; gap: 7px; align-items: flex-start; line-height: 1.5; }
 .tips-list li::before { content: '→'; flex-shrink: 0; opacity: 0.6; }
@@ -200,8 +191,7 @@ input::placeholder { color: var(--step-inactive); }
 .regen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 @media (max-width: 860px) {
   .it-sidebar { display: none; }
-  .it-main { margin-left: 0; max-width: 100%; padding: 24px 18px 90px; }
-  #results-action-bar { padding: 10px 18px; }
+  .it-main { margin-left: 0; max-width: 100%; padding: 24px 18px; }
   .card { padding: 34px 26px; }
   .two-col { grid-template-columns: 1fr; }
   .budget-track { grid-template-columns: 1fr; }
@@ -219,47 +209,6 @@ input::placeholder { color: var(--step-inactive); }
   .city-primary, .city-secondary { width: 100%; }
   .city-secondary-headers, .city-secondary-inputs { grid-template-columns: 1fr 80px 52px 30px; gap: 7px; }
   .city-secondary .arrival-input { padding: 12px 4px; }
-  .city-departure-inputs { grid-template-columns: 1fr 80px 52px 30px; gap: 7px; }
-  .city-secondary .departure-input { padding: 12px 4px; }
-}
-
-#lang-switcher { width: auto; padding: 6px 10px; font-size: 13px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-primary); cursor: pointer; font-family: 'DM Sans', sans-serif; flex-shrink: 0; }
-@media print {
-  /* Hide everything that isn't the itinerary */
-  #app-header, #onboarding-view, #loading-view,
-  .it-sidebar, .regen-row, .maps-link, .no-print,
-  #results-action-bar { display: none !important; }
-
-  /* Reset page chrome */
-  body { background: #fff; color: #000; font-size: 11pt; }
-  #itinerary-view { display: block !important; padding-top: 0; }
-  .itinerary-layout { display: block; }
-  .it-main { margin-left: 0; max-width: 100%; padding: 16pt 24pt; }
-
-  /* Cards and surfaces */
-  .t-card, .tips-box, .day-strip, .weather-badge {
-    background: #fff !important;
-    border: 1px solid #ccc !important;
-    box-shadow: none !important;
-  }
-  .t-card:hover { transform: none !important; }
-
-  /* Typography */
-  .day-title { font-size: 16pt; }
-  .day-eyebrow { font-size: 8pt; }
-  .t-name { font-size: 11pt; }
-  .t-desc, .t-pill { font-size: 9.5pt; color: #444 !important; }
-  .tips-list li { font-size: 9.5pt; color: #2a5c44 !important; }
-
-  /* Page breaks — try to keep each day together */
-  .day-section { page-break-inside: avoid; break-inside: avoid; margin-bottom: 24pt; }
-  .city-divider { page-break-before: always; break-before: always; margin: 12pt 0; }
-
-  /* Remove hover/animation artifacts */
-  * { animation: none !important; transition: none !important; }
-
-  /* Ensure links/route badges are readable */
-  .route-city { background: #e8f4ef !important; color: #1a1714 !important; }
 }
 </style>
 </head>
@@ -273,164 +222,141 @@ input::placeholder { color: var(--step-inactive); }
     <div class="step-dot" id="dot-3"></div>
     <div class="step-dot" id="dot-4"></div>
     <span class="step-label" id="step-label">Step 1 of 5</span>
-    <select id="lang-switcher" onchange="changeLang(this.value)">
-      <option value="en">🇬🇧 EN</option>
-      <option value="tr">🇹🇷 TR</option>
-      <option value="es">🇪🇸 ES</option>
-      <option value="fr">🇫🇷 FR</option>
-      <option value="de">🇩🇪 DE</option>
-      <option value="it">🇮🇹 IT</option>
-      <option value="pt">🇵🇹 PT</option>
-    </select>
   </div>
   <div id="itinerary-header-extras">
     <div class="trip-route" id="header-route"></div>
+    <button class="btn-outline" onclick="resetApp()">✏️ Edit trip</button>
+    <button class="btn-solid">↗ Share</button>
   </div>
 </header>
-<div id="results-action-bar">
-  <button class="btn-outline" onclick="resetApp()" data-i18n="edit_trip">✏️ Edit trip</button>
-  <button class="btn-solid" onclick="window.print()" data-i18n="export_pdf">🖨 Export PDF</button>
-</div>
 <div id="onboarding-view">
   <div class="card" id="step-0">
-    <div class="step-badge" data-i18n="step1_badge" data-i18n-upper>Step 1 · Destination</div>
-    <h2 data-i18n="step1_h2">Where are you headed?</h2>
-    <p class="subtitle" data-i18n="step1_subtitle">Add one or more cities. Set how many nights in each.</p>
+    <div class="step-badge">Step 1 · Destination</div>
+    <h2>Where are you headed?</h2>
+    <p class="subtitle">Add one or more cities. Set how many nights in each.</p>
     <div class="city-list" id="cityList">
       <div class="city-row">
         <div class="city-primary">
-          <div class="city-primary-header" data-i18n="city_country_header" data-i18n-upper>City, Country</div>
-          <div class="autocomplete-wrap"><input type="text" placeholder="e.g. Paris, France" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder"/></div>
+          <div class="city-primary-header">City, Country</div>
+          <div class="autocomplete-wrap"><input type="text" placeholder="e.g. Paris, France" class="city-input" autocomplete="off"/></div>
         </div>
         <div class="city-secondary">
-          <div class="city-secondary-headers"><span class="sh-airport" data-i18n="airport_opt" data-i18n-upper>Airport (opt.)</span><span class="sh-lands" data-i18n="lands_header" data-i18n-upper>🛬 Lands</span><span class="sh-nights" data-i18n="nights_header" data-i18n-upper>Nights</span></div>
+          <div class="city-secondary-headers"><span class="sh-airport">Airport (opt.)</span><span class="sh-lands">🛬 Lands</span><span class="sh-nights">Nights</span></div>
           <div class="city-secondary-inputs">
-            <select class="airport-select arrival-airport-select" disabled><option value="" data-i18n="select_city_first">Select city first</option></select>
+            <input type="text" class="airport-input" placeholder="e.g. CDG"/>
             <input type="time" class="arrival-input"/>
             <input type="number" min="1" max="30" value="3" class="nights-input"/>
             <button class="remove-btn" onclick="removeCity(this)">×</button>
           </div>
-          <div class="city-departure-wrap">
-            <div class="city-departure-header" data-i18n="departs_header" data-i18n-upper>🛫 Departs</div>
-            <div class="city-departure-inputs">
-              <select class="airport-select departure-airport-select" disabled><option value="" data-i18n="select_city_first">Select city first</option></select>
-              <input type="time" class="departure-input"/>
-              <span></span><span></span>
-            </div>
-          </div>
         </div>
       </div>
     </div>
-    <button class="add-city-btn" onclick="addCity()" data-i18n="add_another_city">+ Add another city</button>
-    <div class="field"><label data-i18n="start_date">Start date</label><input type="date" id="startDate"/></div>
-    <div class="nav-row"><span></span><button class="btn-next" onclick="goTo(1)" data-i18n="continue_btn">Continue →</button></div>
+    <button class="add-city-btn" onclick="addCity()">+ Add another city</button>
+    <div class="field"><label>Start date</label><input type="date" id="startDate"/></div>
+    <div class="nav-row"><span></span><button class="btn-next" onclick="goTo(1)">Continue →</button></div>
   </div>
   <div class="card" id="step-1" style="display:none;">
-    <div class="step-badge" data-i18n="step2_badge" data-i18n-upper>Step 2 · Your Group</div>
-    <h2 data-i18n="step2_h2">Who's travelling?</h2>
-    <p class="subtitle" data-i18n="step2_subtitle">We'll tailor dining, activities, and pacing to your group.</p>
+    <div class="step-badge">Step 2 · Your Group</div>
+    <h2>Who's travelling?</h2>
+    <p class="subtitle">We'll tailor dining, activities, and pacing to your group.</p>
     <div class="two-col">
-      <div><label data-i18n="adults_label">Adults</label><div class="stepper"><button onclick="adjust('adults',-1)">−</button><span id="adults-val">2</span><button onclick="adjust('adults',1)">+</button></div></div>
-      <div><label data-i18n="children_label">Children</label><div class="stepper"><button onclick="adjust('kids',-1)">−</button><span id="kids-val">0</span><button onclick="adjust('kids',1)">+</button></div></div>
+      <div><label>Adults</label><div class="stepper"><button onclick="adjust('adults',-1)">−</button><span id="adults-val">2</span><button onclick="adjust('adults',1)">+</button></div></div>
+      <div><label>Children</label><div class="stepper"><button onclick="adjust('kids',-1)">−</button><span id="kids-val">0</span><button onclick="adjust('kids',1)">+</button></div></div>
     </div>
-    <span class="chip-label" data-i18n="trip_vibe">Trip vibe</span>
+    <span class="chip-label">Trip vibe</span>
     <div class="chip-group" id="tripType">
-      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_romantic">🥂 Romantic</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_adventure">⛺ Adventure</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_cultural">🏛️ Cultural</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_family">👨‍👩‍👧 Family</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_relaxation">🌿 Relaxation</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_food_wine">🍽️ Food & Wine</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_party">🎉 Party</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_active">🏋️ Active</div>
+      <div class="chip" onclick="toggleChip(this)">🥂 Romantic</div>
+      <div class="chip" onclick="toggleChip(this)">⛺ Adventure</div>
+      <div class="chip" onclick="toggleChip(this)">🏛️ Cultural</div>
+      <div class="chip" onclick="toggleChip(this)">👨‍👩‍👧 Family</div>
+      <div class="chip" onclick="toggleChip(this)">🌿 Relaxation</div>
+      <div class="chip" onclick="toggleChip(this)">🍽️ Food & Wine</div>
+      <div class="chip" onclick="toggleChip(this)">🎉 Party</div>
+      <div class="chip" onclick="toggleChip(this)">🏋️ Active</div>
     </div>
-    <span class="chip-label" data-i18n="travel_pace">Travel pace</span>
+    <span class="chip-label">Travel pace</span>
     <div class="chip-group" id="pace">
-      <div class="chip" onclick="singleChip(this,'pace')" data-i18n="pace_relaxed">🐌 Relaxed</div>
-      <div class="chip selected" onclick="singleChip(this,'pace')" data-i18n="pace_balanced">⚖️ Balanced</div>
-      <div class="chip" onclick="singleChip(this,'pace')" data-i18n="pace_packed">⚡ Packed</div>
+      <div class="chip" onclick="singleChip(this,'pace')">🐌 Relaxed</div>
+      <div class="chip selected" onclick="singleChip(this,'pace')">⚖️ Balanced</div>
+      <div class="chip" onclick="singleChip(this,'pace')">⚡ Packed</div>
     </div>
-    <div class="nav-row"><button class="btn-back" onclick="goTo(0)" data-i18n="back_btn">← Back</button><button class="btn-next" onclick="goTo(2)" data-i18n="continue_btn">Continue →</button></div>
+    <div class="nav-row"><button class="btn-back" onclick="goTo(0)">← Back</button><button class="btn-next" onclick="goTo(2)">Continue →</button></div>
   </div>
   <div class="card" id="step-2" style="display:none;">
-    <div class="step-badge" data-i18n="step3_badge" data-i18n-upper>Step 3 · Budget & Stay</div>
-    <h2 data-i18n="step3_h2">What's your budget like?</h2>
-    <p class="subtitle" data-i18n="step3_subtitle">Shapes accommodation, restaurants, and activities we suggest.</p>
+    <div class="step-badge">Step 3 · Budget & Stay</div>
+    <h2>What's your budget like?</h2>
+    <p class="subtitle">Shapes accommodation, restaurants, and activities we suggest.</p>
     <div class="budget-track" id="budget">
-      <div class="budget-option" onclick="selectBudget(this)"><div class="icon">🎒</div><div class="name" data-i18n="budget_budget">Budget</div><div class="desc" data-i18n="budget_budget_desc">Hostels, street food</div></div>
-      <div class="budget-option selected" onclick="selectBudget(this)"><div class="icon">✈️</div><div class="name" data-i18n="budget_midrange">Mid-range</div><div class="desc" data-i18n="budget_midrange_desc">3-star hotels, bistros</div></div>
-      <div class="budget-option" onclick="selectBudget(this)"><div class="icon">💎</div><div class="name" data-i18n="budget_luxury">Luxury</div><div class="desc" data-i18n="budget_luxury_desc">5-star, fine dining</div></div>
+      <div class="budget-option" onclick="selectBudget(this)"><div class="icon">🎒</div><div class="name">Budget</div><div class="desc">Hostels, street food</div></div>
+      <div class="budget-option selected" onclick="selectBudget(this)"><div class="icon">✈️</div><div class="name">Mid-range</div><div class="desc">3-star hotels, bistros</div></div>
+      <div class="budget-option" onclick="selectBudget(this)"><div class="icon">💎</div><div class="name">Luxury</div><div class="desc">5-star, fine dining</div></div>
     </div>
-    <span class="chip-label" data-i18n="accom_pref">Accommodation preference</span>
+    <span class="chip-label">Accommodation preference</span>
     <div class="chip-group" id="accom">
-      <div class="chip selected" onclick="singleChip(this,'accom')" data-i18n="accom_hotel">🏨 Hotel</div>
-      <div class="chip" onclick="singleChip(this,'accom')" data-i18n="accom_airbnb">🏠 Airbnb</div>
-      <div class="chip" onclick="singleChip(this,'accom')" data-i18n="accom_hostel">🛏️ Hostel</div>
-      <div class="chip" onclick="singleChip(this,'accom')" data-i18n="accom_resort">🏖️ Resort</div>
-      <div class="chip" onclick="singleChip(this,'accom')" data-i18n="accom_boutique">🏡 Boutique</div>
+      <div class="chip selected" onclick="singleChip(this,'accom')">🏨 Hotel</div>
+      <div class="chip" onclick="singleChip(this,'accom')">🏠 Airbnb</div>
+      <div class="chip" onclick="singleChip(this,'accom')">🛏️ Hostel</div>
+      <div class="chip" onclick="singleChip(this,'accom')">🏖️ Resort</div>
+      <div class="chip" onclick="singleChip(this,'accom')">🏡 Boutique</div>
     </div>
-    <div class="nav-row"><button class="btn-back" onclick="goTo(1)" data-i18n="back_btn">← Back</button><button class="btn-next" onclick="goTo(3)" data-i18n="continue_btn">Continue →</button></div>
+    <div class="nav-row"><button class="btn-back" onclick="goTo(1)">← Back</button><button class="btn-next" onclick="goTo(3)">Continue →</button></div>
   </div>
   <div class="card" id="step-3" style="display:none;">
-    <div class="step-badge" data-i18n="step4_badge" data-i18n-upper>Step 4 · Preferences</div>
-    <h2 data-i18n="step4_h2">Any special needs?</h2>
-    <p class="subtitle" data-i18n="step4_subtitle">Personalise every meal and activity recommendation.</p>
-    <span class="chip-label" data-i18n="dietary_req">Dietary requirements</span>
+    <div class="step-badge">Step 4 · Preferences</div>
+    <h2>Any special needs?</h2>
+    <p class="subtitle">Personalise every meal and activity recommendation.</p>
+    <span class="chip-label">Dietary requirements</span>
     <div class="chip-group" id="diet">
-      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_none">🥩 No restrictions</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_vegetarian">🥗 Vegetarian</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_vegan">🌱 Vegan</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_pescatarian">🐟 Pescatarian</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_gluten_free">🌾 Gluten-free</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_dairy_free">🥛 Dairy-free</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_kosher">✡️ Kosher</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_halal">☪️ Halal</div>
+      <div class="chip" onclick="toggleChip(this)">🥩 No restrictions</div>
+      <div class="chip" onclick="toggleChip(this)">🥗 Vegetarian</div>
+      <div class="chip" onclick="toggleChip(this)">🌱 Vegan</div>
+      <div class="chip" onclick="toggleChip(this)">🐟 Pescatarian</div>
+      <div class="chip" onclick="toggleChip(this)">🌾 Gluten-free</div>
+      <div class="chip" onclick="toggleChip(this)">🥛 Dairy-free</div>
+      <div class="chip" onclick="toggleChip(this)">✡️ Kosher</div>
+      <div class="chip" onclick="toggleChip(this)">☪️ Halal</div>
     </div>
-    <span class="chip-label" data-i18n="interests_label">Interests</span>
+    <span class="chip-label">Interests</span>
     <div class="chip-group" id="interests">
-      <div class="chip" onclick="toggleChip(this)" data-i18n="interest_museums">🖼️ Museums & Art</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="interest_nature">🌳 Nature & Parks</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="interest_shopping">🛍️ Shopping</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="interest_theatre">🎭 Theatre & Shows</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="interest_photography">📸 Photography</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="interest_nightlife">🍺 Nightlife</div>
-      <div class="chip" onclick="toggleChip(this)" data-i18n="interest_history">🕌 History & Heritage</div>
+      <div class="chip" onclick="toggleChip(this)">🖼️ Museums & Art</div>
+      <div class="chip" onclick="toggleChip(this)">🌳 Nature & Parks</div>
+      <div class="chip" onclick="toggleChip(this)">🛍️ Shopping</div>
+      <div class="chip" onclick="toggleChip(this)">🎭 Theatre & Shows</div>
+      <div class="chip" onclick="toggleChip(this)">📸 Photography</div>
+      <div class="chip" onclick="toggleChip(this)">🍺 Nightlife</div>
+      <div class="chip" onclick="toggleChip(this)">🕌 History & Heritage</div>
     </div>
     <div>
-      <div class="toggle-row"><div class="toggle-info"><p data-i18n="access_title">Accessibility needs</p><small data-i18n="access_desc">Wheelchair accessible routes & venues</small></div><label class="toggle"><input type="checkbox" id="access"/><span class="toggle-slider"></span></label></div>
-      <div class="toggle-row"><div class="toggle-info"><p data-i18n="avoid_traps_title">Avoid tourist traps</p><small data-i18n="avoid_traps_desc">Prefer local, off-the-beaten-path spots</small></div><label class="toggle"><input type="checkbox" id="localOnly" checked/><span class="toggle-slider"></span></label></div>
-      <div class="toggle-row"><div class="toggle-info"><p data-i18n="indoor_alt_title">Indoor alternatives</p><small data-i18n="indoor_alt_desc">Backup plans for bad weather</small></div><label class="toggle"><input type="checkbox" id="indoor" checked/><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div class="toggle-info"><p>Accessibility needs</p><small>Wheelchair accessible routes & venues</small></div><label class="toggle"><input type="checkbox" id="access"/><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div class="toggle-info"><p>Avoid tourist traps</p><small>Prefer local, off-the-beaten-path spots</small></div><label class="toggle"><input type="checkbox" id="localOnly" checked/><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div class="toggle-info"><p>Indoor alternatives</p><small>Backup plans for bad weather</small></div><label class="toggle"><input type="checkbox" id="indoor" checked/><span class="toggle-slider"></span></label></div>
     </div>
-    <div class="nav-row"><button class="btn-back" onclick="goTo(2)" data-i18n="back_btn">← Back</button><button class="btn-next" onclick="goTo(4)" data-i18n="review_trip_btn">Review trip →</button></div>
+    <div class="nav-row"><button class="btn-back" onclick="goTo(2)">← Back</button><button class="btn-next" onclick="goTo(4)">Review trip →</button></div>
   </div>
   <div class="card" id="step-4" style="display:none;">
-    <div class="step-badge" data-i18n="step5_badge" data-i18n-upper>Step 5 · Review</div>
-    <h2 data-i18n="step5_h2">Your trip at a glance</h2>
-    <p class="subtitle" data-i18n="step5_subtitle">Everything look right? Let's build your itinerary.</p>
+    <div class="step-badge">Step 5 · Review</div>
+    <h2>Your trip at a glance</h2>
+    <p class="subtitle">Everything look right? Let's build your itinerary.</p>
     <div class="summary-cities">
-      <div class="s-label" style="font-size:11px;font-weight:700;letter-spacing:.8px;color:var(--text-secondary);margin-bottom:6px;" data-i18n="route_label" data-i18n-upper>Route</div>
+      <div class="s-label" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text-secondary);margin-bottom:6px;">Route</div>
       <div class="city-route-preview" id="summaryRoute"></div>
     </div>
     <div class="summary-grid" id="summaryGrid"></div>
-    <div class="field" style="margin-top:18px;">
-      <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px;"><span data-i18n="notes_label">Anything else we should know?</span> <span style="font-weight:400;opacity:.7" data-i18n="notes_optional">(optional)</span></label>
-      <textarea id="tripNotes" rows="4" data-i18n-ph="notes_placeholder" placeholder="e.g. We're celebrating a birthday, prefer quieter areas, travelling with a dog…" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;background:var(--surface);color:var(--text);box-sizing:border-box;"></textarea>
-    </div>
-    <button class="generate-btn" id="generateBtn" onclick="startGeneration()" data-i18n="generate_btn">✦ Generate My Itinerary</button>
-    <div class="nav-row" style="margin-top:14px;padding-top:14px;"><button class="btn-back" onclick="goTo(3)" data-i18n="edit_prefs_btn">← Edit preferences</button><span></span></div>
+    <button class="generate-btn" id="generateBtn" onclick="startGeneration()">✦ Generate My Itinerary</button>
+    <div class="nav-row" style="margin-top:14px;padding-top:14px;"><button class="btn-back" onclick="goTo(3)">← Edit preferences</button><span></span></div>
   </div>
 </div>
 <div id="loading-view">
   <div style="text-align:center;max-width:380px;padding:0 24px;">
     <div class="loading-spinner"></div>
-    <div class="loading-title" data-i18n="loading_title">Crafting your itinerary…</div>
-    <p style="font-size:13px;color:var(--text-secondary);" data-i18n="loading_subtitle">Our AI is planning every hour of your trip.</p>
+    <div class="loading-title">Crafting your itinerary…</div>
+    <p style="font-size:13px;color:var(--text-secondary);">Our AI is planning every hour of your trip.</p>
     <div class="loading-steps">
-      <div class="loading-step active" id="ls-0"><div class="ls-dot"></div><span data-i18n="loading_step_0">Researching destinations & attractions</span></div>
-      <div class="loading-step" id="ls-1"><div class="ls-dot"></div><span data-i18n="loading_step_1">Selecting restaurants & hidden gems</span></div>
-      <div class="loading-step" id="ls-2"><div class="ls-dot"></div><span data-i18n="loading_step_2">Calculating travel times & logistics</span></div>
-      <div class="loading-step" id="ls-3"><div class="ls-dot"></div><span data-i18n="loading_step_3">Adding local tips & weather context</span></div>
-      <div class="loading-step" id="ls-4"><div class="ls-dot"></div><span data-i18n="loading_step_4">Finalising your day-by-day plan</span></div>
+      <div class="loading-step active" id="ls-0"><div class="ls-dot"></div>Researching destinations & attractions</div>
+      <div class="loading-step" id="ls-1"><div class="ls-dot"></div>Selecting restaurants & hidden gems</div>
+      <div class="loading-step" id="ls-2"><div class="ls-dot"></div>Calculating travel times & logistics</div>
+      <div class="loading-step" id="ls-3"><div class="ls-dot"></div>Adding local tips & weather context</div>
+      <div class="loading-step" id="ls-4"><div class="ls-dot"></div>Finalising your day-by-day plan</div>
     </div>
   </div>
 </div>
@@ -441,23 +367,6 @@ input::placeholder { color: var(--step-inactive); }
   </div>
 </div>
 <script>
-let currentLang = 'en';
-const langNames = { en: 'English', tr: 'Turkish', es: 'Spanish', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese' };
-const LOCALE_TAG = { tr: 'tr-TR', de: 'de-DE', fr: 'fr-FR', es: 'es-ES', it: 'it-IT', pt: 'pt-PT', en: 'en-US' };
-function t(key) { return (translations[currentLang] || translations['en'])[key] || translations['en'][key] || key; }
-function u(str) { return str.toLocaleUpperCase(LOCALE_TAG[currentLang] || 'en-US'); }
-function applyTranslations() {
-  document.querySelectorAll('[data-i18n]').forEach(el => { const v = t(el.dataset.i18n); el.textContent = el.hasAttribute('data-i18n-upper') ? u(v) : v; });
-  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
-}
-function changeLang(lang) {
-  currentLang = lang;
-  localStorage.setItem('jounee_lang', lang);
-  const switcher = document.getElementById('lang-switcher');
-  if (switcher) switcher.value = lang;
-  applyTranslations();
-  document.getElementById('step-label').textContent = t('step_of').replace('{n}', state.currentStep + 1);
-}
 const state = { currentStep: 0, adults: 2, kids: 0, tripData: null };
 function goTo(step) {
   document.getElementById(`step-${state.currentStep}`).style.display = 'none';
@@ -475,11 +384,11 @@ function updateDots() {
     if (i < state.currentStep) d.classList.add('done');
     else if (i === state.currentStep) d.classList.add('active');
   }
-  document.getElementById('step-label').textContent = t('step_of').replace('{n}', state.currentStep + 1);
+  document.getElementById('step-label').textContent = `Step ${state.currentStep + 1} of 5`;
 }
 function addCity() {
   const row = document.createElement('div'); row.className = 'city-row';
-  row.innerHTML = `<div class="city-primary"><div class="city-primary-header" data-i18n="city_country_header" data-i18n-upper>${u(t('city_country_header'))}</div><div class="autocomplete-wrap"><input type="text" placeholder="${t('city_placeholder_2')}" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder_2"/></div></div><div class="city-secondary"><div class="city-secondary-headers"><span class="sh-airport" data-i18n="airport_opt" data-i18n-upper>${u(t('airport_opt'))}</span><span class="sh-lands" data-i18n="lands_header" data-i18n-upper>${u(t('lands_header'))}</span><span class="sh-nights" data-i18n="nights_header" data-i18n-upper>${u(t('nights_header'))}</span></div><div class="city-secondary-inputs"><select class="airport-select arrival-airport-select" disabled><option value="" data-i18n="select_city_first">${t('select_city_first')}</option></select><input type="time" class="arrival-input"/><input type="number" min="1" max="30" value="3" class="nights-input"/><button class="remove-btn" onclick="removeCity(this)">×</button></div><div class="city-departure-wrap"><div class="city-departure-header" data-i18n="departs_header" data-i18n-upper>${u(t('departs_header'))}</div><div class="city-departure-inputs"><select class="airport-select departure-airport-select" disabled><option value="" data-i18n="select_city_first">${t('select_city_first')}</option></select><input type="time" class="departure-input"/><span></span><span></span></div></div></div>`;
+  row.innerHTML = `<div class="city-primary"><div class="city-primary-header">City, Country</div><div class="autocomplete-wrap"><input type="text" placeholder="e.g. Rome, Italy" class="city-input" autocomplete="off"/></div></div><div class="city-secondary"><div class="city-secondary-headers"><span class="sh-airport">Airport (opt.)</span><span class="sh-lands">🛬 Lands</span><span class="sh-nights">Nights</span></div><div class="city-secondary-inputs"><input type="text" class="airport-input" placeholder="e.g. FCO"/><input type="time" class="arrival-input"/><input type="number" min="1" max="30" value="3" class="nights-input"/><button class="remove-btn" onclick="removeCity(this)">×</button></div></div>`;
   document.getElementById('cityList').appendChild(row);
   initAutocomplete(row.querySelector('.city-input'));
 }
@@ -489,23 +398,12 @@ function toggleChip(el) { el.classList.toggle('selected'); }
 function singleChip(el, groupId) { el.closest('.chip-group').querySelectorAll('.chip').forEach(c => c.classList.remove('selected')); el.classList.add('selected'); }
 function selectBudget(el) { document.querySelectorAll('#budget .budget-option').forEach(b => b.classList.remove('selected')); el.classList.add('selected'); }
 function getTripProfile() {
-  const rows = [...document.querySelectorAll('.city-row')];
-  const cityData = rows.map(row => ({
-    city: row.querySelector('.city-input')?.value.trim() || '',
-    nights: parseInt(row.querySelector('.nights-input')?.value) || 3,
-    arrivalAirport: row.querySelector('.arrival-airport-select')?.value || '',
-    arrivalTime: row.querySelector('.arrival-input')?.value || '',
-    departureAirport: row.querySelector('.departure-airport-select')?.value || '',
-    departureTime: row.querySelector('.departure-input')?.value || ''
-  })).filter(d => d.city);
   return {
-    cityData,
-    cities: cityData.map(d => d.city),
-    nights: cityData.map(d => d.nights),
-    arrivalTimes: cityData.map(d => d.arrivalTime),
-    airports: cityData.map(d => d.arrivalAirport),
-    lats: rows.filter(r => r.querySelector('.city-input')?.value.trim()).map(r => parseFloat(r.dataset.lat) || 0),
-    lons: rows.filter(r => r.querySelector('.city-input')?.value.trim()).map(r => parseFloat(r.dataset.lon) || 0),
+    cities: [...document.querySelectorAll('.city-input')].map(i => i.value.trim()).filter(Boolean),
+    nights: [...document.querySelectorAll('.nights-input')].map(i => parseInt(i.value) || 3),
+    arrivalTimes: [...document.querySelectorAll('.arrival-input')].map(i => i.value || ''),
+    airports: [...document.querySelectorAll('.airport-input')].map(i => i.value.trim()),
+    cityCoords: [...document.querySelectorAll('.city-input')].map(i => ({ lat: parseFloat(i.dataset.lat) || null, lon: parseFloat(i.dataset.lon) || null })),
     startDate: document.getElementById('startDate').value,
     adults: state.adults, kids: state.kids,
     tripTypes: [...document.querySelectorAll('#tripType .chip.selected')].map(c => c.textContent.trim()),
@@ -516,24 +414,21 @@ function getTripProfile() {
     interests: [...document.querySelectorAll('#interests .chip.selected')].map(c => c.textContent.trim()),
     accessibility: document.getElementById('access').checked,
     localOnly: document.getElementById('localOnly').checked,
-    indoorAlt: document.getElementById('indoor').checked,
-    notes: document.getElementById('tripNotes')?.value.trim() || ''
+    indoorAlt: document.getElementById('indoor').checked
   };
 }
 function buildSummary() {
   const p = getTripProfile();
-  document.getElementById('summaryRoute').innerHTML = p.cities.length ? p.cities.map((c,i) => `${i>0?'<span class="route-arrow">→</span>':''}<span class="city-tag">${c||'—'} <span style="opacity:.6;font-weight:400">${p.nights[i]}n</span></span>`).join('') : `<span style="color:var(--text-secondary);font-size:13px;">${t('sum_no_cities')}</span>`;
+  document.getElementById('summaryRoute').innerHTML = p.cities.length ? p.cities.map((c,i) => `${i>0?'<span class="route-arrow">→</span>':''}<span class="city-tag">${c||'—'} <span style="opacity:.6;font-weight:400">${p.nights[i]}n</span></span>`).join('') : '<span style="color:var(--text-secondary);font-size:13px;">No cities added yet</span>';
   const totalNights = p.nights.reduce((a,b)=>a+b,0);
-  const groupStr = `${p.adults} ${p.adults>1?t('adults_p'):t('adult_s')}${p.kids>0?`, ${p.kids} ${p.kids>1?t('kids_p'):t('kid_s')}`:' '+t('no_kids')}`;
-  document.getElementById('summaryGrid').innerHTML = `<div class="summary-item"><div class="s-label">${u(t('sum_group'))}</div><div class="s-value">${groupStr}</div></div><div class="summary-item"><div class="s-label">${u(t('sum_duration'))}</div><div class="s-value">${totalNights} ${t('nights_unit')}</div></div><div class="summary-item"><div class="s-label">${u(t('sum_budget'))}</div><div class="s-value">${p.budget}</div></div><div class="summary-item"><div class="s-label">${u(t('sum_pace'))}</div><div class="s-value">${p.pace}</div></div><div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_vibe'))}</div><div class="s-value">${p.tripTypes.join(', ')||t('not_specified')}</div></div><div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_diet'))}</div><div class="s-value">${p.diet.join(', ')||t('no_restrictions')}</div></div>`;
+  document.getElementById('summaryGrid').innerHTML = `<div class="summary-item"><div class="s-label">Group</div><div class="s-value">${p.adults} adult${p.adults>1?'s':''}${p.kids>0?`, ${p.kids} kid${p.kids>1?'s':''}`:' (no kids)'}</div></div><div class="summary-item"><div class="s-label">Duration</div><div class="s-value">${totalNights} nights</div></div><div class="summary-item"><div class="s-label">Budget</div><div class="s-value">${p.budget}</div></div><div class="summary-item"><div class="s-label">Pace</div><div class="s-value">${p.pace}</div></div><div class="summary-item" style="grid-column:1/-1"><div class="s-label">Vibe</div><div class="s-value">${p.tripTypes.join(', ')||'Not specified'}</div></div><div class="summary-item" style="grid-column:1/-1"><div class="s-label">Diet</div><div class="s-value">${p.diet.join(', ')||'No restrictions'}</div></div>`;
 }
 async function startGeneration() {
   const profile = getTripProfile();
-  if (!profile.cities.length) { alert(t('alert_add_city')); return; }
+  if (!profile.cities.length) { alert('Please add at least one destination city.'); return; }
   document.getElementById('onboarding-view').style.display = 'none';
   document.getElementById('onboarding-progress').style.display = 'none';
   document.getElementById('loading-view').style.display = 'flex';
-  document.getElementById('lang-switcher').style.display = 'none';
   let si = 0;
   const stepInterval = setInterval(() => {
     if (si > 0) { const prev = document.getElementById(`ls-${si-1}`); if(prev) prev.classList.replace('active','done'); }
@@ -547,27 +442,22 @@ async function startGeneration() {
     await new Promise(r => setTimeout(r, 500));
     state.tripData = { profile, itinerary };
     showItinerary(profile, itinerary);
-    enrichPlaces(profile, itinerary);
+    enrichPlaces(profile.cityCoords || []);
   } catch (err) {
     clearInterval(stepInterval);
     document.getElementById('loading-view').style.display = 'none';
     document.getElementById('onboarding-view').style.display = 'flex';
     document.getElementById('onboarding-progress').style.display = 'flex';
-    document.getElementById('lang-switcher').style.display = '';
-    goTo(4); alert(t('alert_error') + err.message);
+    goTo(4); alert('Something went wrong. Please try again.\n\n' + err.message);
   }
 }
 async function callClaude(profile, customPrompt) {
-  const src = profile.cityData || profile.cities.map((c,i) => ({ city: c, nights: profile.nights[i], arrivalAirport: profile.airports?.[i]||'', arrivalTime: profile.arrivalTimes?.[i]||'', departureAirport: '', departureTime: '' }));
-  const cityList = src.map(d => {
-    const airp = d.arrivalAirport ? ` via ${d.arrivalAirport}` : '';
-    const arr = d.arrivalTime ? `, arrives at ${d.arrivalTime}` : '';
-    const depAirp = d.departureAirport ? ` via ${d.departureAirport}` : '';
-    const dep = d.departureTime ? `, departs at ${d.departureTime}${depAirp}` : '';
-    return `${d.city} (${d.nights} nights${airp}${arr}${dep})`;
+  const cityList = profile.cities.map((c,i) => {
+    const airp = profile.airports?.[i] ? ` via ${profile.airports[i]}` : '';
+    const arr = profile.arrivalTimes?.[i] ? `, arrives at ${profile.arrivalTimes[i]}` : '';
+    return `${c} (${profile.nights[i]} nights${airp}${arr})`;
   }).join(', ');
-  const langInstruction = currentLang !== 'en' ? ` Respond entirely in ${langNames[currentLang]} language.` : '';
-  const prompt = (customPrompt || `You are an expert travel planner. Create a detailed hour-by-hour travel itinerary:\nTRIP: ${cityList} | Start: ${profile.startDate||'unspecified'}\nGROUP: ${profile.adults} adults, ${profile.kids} children\nVIBE: ${profile.tripTypes.join(', ')||'general'} | PACE: ${profile.pace} | BUDGET: ${profile.budget} | STAY: ${profile.accom}\nDIET: ${profile.diet.join(', ')||'none'} | INTERESTS: ${profile.interests.join(', ')||'general'}\nACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | INDOOR BACKUP: ${profile.indoorAlt}\nEach city in the trip may include an airport code and landing time (e.g. "Paris via CDG, lands at 14:00"). Three cases for day 1 of each city: (1) Airport + arrival time provided: open with an isTravel:true airport→hotel transport card using realistic transfer duration for that city/airport (e.g. CDG to Paris center ~40min, DPS to Ubud ~2hrs), then hotel check-in, then activities from that point. (2) No airport + arrival time provided: user arrived by ground (train/bus/car) — skip any airport card, start day 1 with hotel check-in at the arrival time, then activities. (3) No airport + no arrival time: start day 1 at a reasonable morning time (e.g. 9:00 AM) with hotel check-in then activities. Include a hotel check-in event on day 1 of each city with a real hotel recommendation matching the budget and accommodation preference. Do NOT include flight or transport cards between cities — only within-city travel segments. Departure rule: for each city, if a departure time is provided, plan the last day so all activities end with enough buffer — if a departure airport is also set, end activities at least 3 hours before the departure time (airport transfer + check-in); if no departure airport, end activities at least 1 hour before. Never schedule anything that would conflict with the departure window.\nReturn ONLY valid JSON (no markdown, no backticks):\n{"tripTitle":"evocative title","cities":[{"name":"City","country":"Country","nights":3,"dotColor":"#2D6A4F","days":[{"dayNumber":1,"date":"Mon Jun 10","title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"9:00 AM","type":"sight","tag":"Sightseeing","name":"Name","desc":"One sentence description","details":["📍 Full address","⏱ ~2 hrs","🎟 €15 – book online","📅 Book in advance"],"isTravel":false},{"time":"11:00 AM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)","travelDuration":"22 min","isTravel":true},{"time":"1:00 PM","type":"meal","tag":"Lunch","name":"Restaurant Name","desc":"One sentence description","details":["📍 Full address","⏱ ~1.5 hrs","💶 ~€35/person","📅 Reserve 2 days ahead"],"isTravel":false},{"time":"8:00 PM","type":"hotel","tag":"Hotel","name":"Hotel Name","desc":"One sentence description","details":["📍 Full address","🏨 ~€120/night","🛎 Early check-in available"],"isTravel":false}],"tips":["tip1","tip2","tip3"]}]}]}\nDetails rules: Hotels→["📍 address","🏨 ~€X/night","🛎 check-in note"]; Restaurants→["📍 address","⏱ ~1.5 hrs","💶 ~€X/person","📅 reservation note"]; Sights→["📍 address","⏱ ~X hrs","🎟 ticket info","📅 booking note"]; Travel cards→travelDesc must include full route with line names/stops and cost e.g. "Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)".\nRules: max 6 events per day, full day 8am-10pm, travel segments between every activity, type=sight/meal/travel/hotel/end, distinct dotColor per city. Venue naming rule for non-major cities: Do NOT invent specific establishment names (restaurants, bars, clubs, hotels). Instead, anchor every activity to a real, well-known area, district, landmark, waterfront, or public space that genuinely exists in that city. Use your knowledge of the city's geography and known areas. Examples for Mersin: "Dinner at the Marina waterfront", "Evening drinks along the seafront promenade", "Explore the Roman-era ruins at Pompeiopolis", "Morning walk in Atatürk Park". Examples for a small Italian coastal town: "Lunch at a trattoria on the main piazza", "Sunset drinks at the harbour". The goal: point users to real, findable locations and areas — not fictional establishments, but also not vague descriptions. Always name the real district, waterfront, park, square, or landmark as the location anchor. This rule ONLY applies to non-major cities — for Istanbul, Paris, Rome, Tokyo, NYC, Barcelona, London, Amsterdam, Bangkok, Dubai, etc. you may use specific well-known establishment names. Every day must include a dinner event (type=meal, tag=Dinner) around 19:00–20:00 — never skip dinner. If nightlife is listed in interests, include 1-2 nightlife events after dinner (bars, clubs, dancing, live music — type=sight, tag=Nightlife) starting around 21:30–22:00 on most days; the flow should be: ...afternoon activity → dinner (~19:30) → nightlife venue (~21:30). If 'active' or 'sport' appears in interests, suggest real fitness venues: gyms, yoga studios, fitness centers, swimming pools, sports clubs, climbing gyms — not generic park activities. Add these as standalone events with realistic timing (e.g. morning workout 7:00–8:30 AM). For non-major cities describe as 'local gym near city centre' or 'yoga studio in the marina area' without inventing specific names.${profile.notes ? `\nAdditional notes from the traveller: ${profile.notes}` : ''}`) + langInstruction;
+  const prompt = customPrompt || `You are an expert travel planner. Create a detailed hour-by-hour travel itinerary:\nTRIP: ${cityList} | Start: ${profile.startDate||'unspecified'}\nGROUP: ${profile.adults} adults, ${profile.kids} children\nVIBE: ${profile.tripTypes.join(', ')||'general'} | PACE: ${profile.pace} | BUDGET: ${profile.budget} | STAY: ${profile.accom}\nDIET: ${profile.diet.join(', ')||'none'} | INTERESTS: ${profile.interests.join(', ')||'general'}\nACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | INDOOR BACKUP: ${profile.indoorAlt}\nEach city in the trip may include an airport code and landing time (e.g. "Paris via CDG, lands at 14:00"). Three cases for day 1 of each city: (1) Airport + arrival time provided: open with an isTravel:true airport→hotel transport card using realistic transfer duration for that city/airport (e.g. CDG to Paris center ~40min, DPS to Ubud ~2hrs), then hotel check-in, then activities from that point. (2) No airport + arrival time provided: user arrived by ground (train/bus/car) — skip any airport card, start day 1 with hotel check-in at the arrival time, then activities. (3) No airport + no arrival time: start day 1 at a reasonable morning time (e.g. 9:00 AM) with hotel check-in then activities. Include a hotel check-in event on day 1 of each city with a real hotel recommendation matching the budget and accommodation preference. Do NOT include flight or transport cards between cities — only within-city travel segments.\nReturn ONLY valid JSON (no markdown, no backticks):\n{"tripTitle":"evocative title","cities":[{"name":"City","country":"Country","nights":3,"dotColor":"#2D6A4F","days":[{"dayNumber":1,"date":"Mon Jun 10","title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"9:00 AM","type":"sight","tag":"Sightseeing","name":"Name","desc":"One sentence description","details":["📍 Full address","⏱ ~2 hrs","🎟 €15 – book online","📅 Book in advance"],"isTravel":false},{"time":"11:00 AM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)","travelDuration":"22 min","isTravel":true},{"time":"1:00 PM","type":"meal","tag":"Lunch","name":"Restaurant Name","desc":"One sentence description","details":["📍 Full address","⏱ ~1.5 hrs","💶 ~€35/person","📅 Reserve 2 days ahead"],"isTravel":false},{"time":"8:00 PM","type":"hotel","tag":"Hotel","name":"Hotel Name","desc":"One sentence description","details":["📍 Full address","🏨 ~€120/night","🛎 Early check-in available"],"isTravel":false}],"tips":["tip1","tip2","tip3"]}]}]}\nDetails rules: Hotels→["📍 address","🏨 ~€X/night","🛎 check-in note"]; Restaurants→["📍 address","⏱ ~1.5 hrs","💶 ~€X/person","📅 reservation note"]; Sights→["📍 address","⏱ ~X hrs","🎟 ticket info","📅 booking note"]; Travel cards→travelDesc must include full route with line names/stops and cost e.g. "Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)".\nRules: max 6 events per day, full day 8am-10pm, real restaurant/hotel/sight names with real addresses, travel segments between every activity, type=sight/meal/travel/hotel/end, distinct dotColor per city.`;
   const response = await fetch('/api/itinerary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
   if (!response.ok) throw new Error(`Server error: ${response.status}`);
   const reader = response.body.getReader();
@@ -600,41 +490,36 @@ async function callClaude(profile, customPrompt) {
   if (m) return JSON.parse(m[0]);
   throw new Error('Could not parse itinerary JSON from response');
 }
-function renderEvents(events, idPrefix, cityName, country) {
+function renderEvents(events, cityIndex) {
+  cityIndex = cityIndex ?? 0;
   return events.map((ev,i) => {
     const isLast = i === events.length-1;
     const connector = isLast ? '' : '<div class="t-connector"></div>';
     if (ev.isTravel) return `<div class="t-event"><div class="t-time-col"><div class="t-dot travel"></div>${connector}</div><div class="t-body"><div class="t-card travel-card"><div class="travel-row"><span class="t-time">${ev.time}</span><span style="font-size:15px">${ev.travelMode}</span><span style="font-size:13px;color:var(--text-secondary)">${ev.travelDesc}</span><span class="travel-dur">${ev.travelDuration}</span></div></div></div></div>`;
     const dotClass = {meal:'meal',sight:'sight',hotel:'hotel',end:'end'}[ev.type]||'sight';
     const tagClass = {meal:'tag-meal',sight:'tag-sight',hotel:'tag-hotel',end:'tag-end',travel:'tag-travel'}[ev.type]||'tag-sight';
-    const dataId = idPrefix ? ` data-event-id="${idPrefix}-evt${i}"` : '';
-    const mapsQ = encodeURIComponent(`${ev.name} ${cityName||''} ${country||''}`.trim());
-    const mapsLink = `<a class="maps-link" href="https://www.google.com/maps/search/${mapsQ}" target="_blank" rel="noopener">📍 Find on Maps</a>`;
-    return `<div class="t-event"><div class="t-time-col"><div class="t-dot ${dotClass}"></div>${connector}</div><div class="t-body"><div class="t-card"${dataId}><div class="t-top"><span class="t-time">${ev.time}</span><span class="t-tag ${tagClass}">${u(ev.tag)}</span></div><div class="t-name">${ev.name}</div>${ev.desc?`<div class="t-desc">${ev.desc}</div>`:''}<div class="t-details">${(ev.details||[]).map(d=>`<span class="t-pill">${d}</span>`).join('')}</div>${mapsLink}</div></div></div>`;
+    return `<div class="t-event"><div class="t-time-col"><div class="t-dot ${dotClass}"></div>${connector}</div><div class="t-body"><div class="t-card event-card" data-event-id="c${cityIndex}e${i}" data-event-type="${ev.type}" data-city-index="${cityIndex}"><div class="t-top"><span class="t-time">${ev.time}</span><span class="t-tag ${tagClass}">${ev.tag}</span></div><div class="t-name">${ev.name}</div>${ev.desc?`<div class="t-desc">${ev.desc}</div>`:''}<div class="t-details">${(ev.details||[]).map(d=>`<span class="t-pill">${d}</span>`).join('')}</div></div></div></div>`;
   }).join('');
 }
 function showItinerary(profile, itinerary) {
   document.getElementById('loading-view').style.display = 'none';
   document.getElementById('itinerary-header-extras').style.display = 'flex';
-  document.getElementById('results-action-bar').style.display = 'flex';
-  document.getElementById('lang-switcher').style.display = 'none';
   document.getElementById('header-route').innerHTML = itinerary.cities.map((c,i) => `${i>0?'<span class="route-sep">→</span>':''}<span class="route-city">${c.name}</span>`).join('');
-  let sbHtml = `<span class="sb-label">${u(t('sb_itinerary'))}</span>`;
+  let sbHtml = `<span class="sb-label">Itinerary</span>`;
   let dayCounter = 0;
   itinerary.cities.forEach(city => {
     sbHtml += `<div><div class="sb-city-header"><div class="sb-city-dot" style="background:${city.dotColor}"></div><div class="sb-city-name">${city.name}</div><div class="sb-city-nights">${city.nights}n</div></div>`;
     city.days.forEach(day => { dayCounter++; sbHtml += `<a class="sb-day ${dayCounter===1?'active':''}" href="#day-${dayCounter}" onclick="setSbActive(this)"><span class="dn">D${day.dayNumber}</span>${day.title}<span class="dd">${day.date.split(' ').slice(0,2).join(' ')}</span></a>`; });
     sbHtml += `</div>`;
   });
-  const sbAdults = `${profile.adults} ${profile.adults>1?t('adults_p'):t('adult_s')}${profile.kids>0?` + ${profile.kids} ${profile.kids>1?t('kids_p'):t('kid_s')}`:'' }`;
-  sbHtml += `<div class="sb-divider"></div><span class="sb-label">${u(t('sb_summary'))}</span><div class="sb-stats"><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_travellers'))}</span><span class="sb-stat-v">${sbAdults}</span></div><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_nights'))}</span><span class="sb-stat-v">${profile.nights.reduce((a,b)=>a+b,0)}</span></div><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_budget'))}</span><span class="sb-stat-v">${profile.budget}</span></div><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_pace'))}</span><span class="sb-stat-v">${profile.pace}</span></div></div>`;
+  sbHtml += `<div class="sb-divider"></div><span class="sb-label">Summary</span><div class="sb-stats"><div class="sb-stat"><span class="sb-stat-l">Travellers</span><span class="sb-stat-v">${profile.adults} adult${profile.adults>1?'s':''}${profile.kids>0?` + ${profile.kids} kid${profile.kids>1?'s':''}`:''}</span></div><div class="sb-stat"><span class="sb-stat-l">Nights</span><span class="sb-stat-v">${profile.nights.reduce((a,b)=>a+b,0)}</span></div><div class="sb-stat"><span class="sb-stat-l">Budget</span><span class="sb-stat-v">${profile.budget}</span></div><div class="sb-stat"><span class="sb-stat-l">Pace</span><span class="sb-stat-v">${profile.pace}</span></div></div>`;
   document.getElementById('itSidebar').innerHTML = sbHtml;
   let mainHtml = ''; let dc = 0;
   itinerary.cities.forEach((city,ci) => {
     if (ci > 0) { mainHtml += `<div class="city-divider"><div class="city-divider-line"></div><div class="city-divider-label">→ ${city.name}</div><div class="city-divider-line"></div></div>`; }
     city.days.forEach(day => {
       dc++; const d = dc;
-      mainHtml += `<div class="day-section" id="day-${d}"><div class="day-header"><div><div class="day-eyebrow">${u(`${t('day_label')} ${day.dayNumber} · ${city.name} · ${day.date}`)}</div><div class="day-title">${day.title}</div><div class="day-subtitle">${day.subtitle}</div></div><div class="weather-badge"><div class="weather-icon">${day.weather.icon}</div><div><div class="weather-temp">${day.weather.temp}</div><div class="weather-desc">${day.weather.desc}</div></div></div></div><div class="day-strip"><div class="strip-item"><div class="strip-val">${day.stats.activities}</div><div class="strip-lbl">${u(t('strip_activities'))}</div></div><div class="strip-item"><div class="strip-val">${day.stats.meals}</div><div class="strip-lbl">${u(t('strip_meals'))}</div></div><div class="strip-item"><div class="strip-val">${day.stats.walking}</div><div class="strip-lbl">${u(t('strip_walking'))}</div></div><div class="strip-item"><div class="strip-val">${day.stats.spend}</div><div class="strip-lbl">${u(t('strip_spend'))}</div></div></div><div class="timeline">${renderEvents(day.events, `day${d}`, city.name, city.country)}</div>${day.tips?.length?`<div class="tips-box"><div class="tips-title">${u(t('local_tips'))}</div><ul class="tips-list">${day.tips.map(tip=>`<li>${tip}</li>`).join('')}</ul></div>`:''}<div class="regen-row"><button class="regen-btn" onclick="regenDay(${d},'${city.name}',${day.dayNumber})">${t('regen_day')}</button></div></div>`;
+      mainHtml += `<div class="day-section" id="day-${d}"><div class="day-header"><div><div class="day-eyebrow">Day ${day.dayNumber} · ${city.name} · ${day.date}</div><div class="day-title">${day.title}</div><div class="day-subtitle">${day.subtitle}</div></div><div class="weather-badge"><div class="weather-icon">${day.weather.icon}</div><div><div class="weather-temp">${day.weather.temp}</div><div class="weather-desc">${day.weather.desc}</div></div></div></div><div class="day-strip"><div class="strip-item"><div class="strip-val">${day.stats.activities}</div><div class="strip-lbl">Activities</div></div><div class="strip-item"><div class="strip-val">${day.stats.meals}</div><div class="strip-lbl">Meals</div></div><div class="strip-item"><div class="strip-val">${day.stats.walking}</div><div class="strip-lbl">Walking</div></div><div class="strip-item"><div class="strip-val">${day.stats.spend}</div><div class="strip-lbl">Est. spend/person</div></div></div><div class="timeline">${renderEvents(day.events, ci)}</div>${day.tips?.length?`<div class="tips-box"><div class="tips-title">💡 Local tips</div><ul class="tips-list">${day.tips.map(t=>`<li>${t}</li>`).join('')}</ul></div>`:''}<div class="regen-row"><button class="regen-btn" onclick="regenDay(${d},'${city.name}',${day.dayNumber},${ci})">↻ Regenerate this day</button></div></div>`;
     });
   });
   document.getElementById('itMain').innerHTML = mainHtml;
@@ -642,41 +527,29 @@ function showItinerary(profile, itinerary) {
   const obs = new IntersectionObserver(entries => { entries.forEach(e => { if (e.isIntersecting) { const id = e.target.id; document.querySelectorAll('.sb-day').forEach(l => l.classList.toggle('active', l.getAttribute('href') === `#${id}`)); }}); }, { rootMargin: '-15% 0px -70% 0px' });
   document.querySelectorAll('.day-section').forEach(s => obs.observe(s));
 }
-async function regenDay(dayNum, cityName, cityDayNum) {
+async function regenDay(dayNum, cityName, cityDayNum, cityIndex) {
+  cityIndex = cityIndex ?? 0;
   const btn = document.querySelector(`#day-${dayNum} .regen-btn`);
-  btn.disabled = true; btn.textContent = t('regenerating');
+  btn.disabled = true; btn.textContent = '⏳ Regenerating…';
   const profile = state.tripData.profile;
-  const prompt = `Regenerate a completely different Day ${cityDayNum} in ${cityName}. Group: ${profile.adults} adults, ${profile.kids} kids. Budget: ${profile.budget}. Vibe: ${profile.tripTypes.join(', ')}. Diet: ${profile.diet.join(', ')||'none'}. Interests: ${profile.interests.join(', ')||'general'}.\nReturn ONLY valid JSON (no markdown) matching this exact structure:\n{"title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"9:00 AM","type":"sight","tag":"Sightseeing","name":"Place name","desc":"One sentence description under 25 words","details":[],"isTravel":false},{"time":"10:30 AM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 1 to City Center (~€2)","travelDuration":"15 min","isTravel":true},{"time":"1:00 PM","type":"meal","tag":"Lunch","name":"Restaurant or area name","desc":"One sentence description","details":[],"isTravel":false}],"tips":["tip1","tip2","tip3"]}\nEvent types: sight, meal, hotel, travel. For travel segments set isTravel:true and include travelMode (emoji), travelDesc (route + cost), travelDuration. For all other events set isTravel:false with type/tag/name/desc/details fields. Include travel segments between activities. Full day 8am-10pm. Always include dinner (type=meal, tag=Dinner) around 19:00-20:00. Venue naming rule for non-major cities: anchor every activity to a real known area, landmark, district, waterfront, park or square — e.g. for Mersin: "Dinner at the Marina waterfront". For Istanbul, Paris, Rome, Tokyo, NYC, Barcelona, London, Amsterdam, Bangkok, Dubai, Berlin, Sydney, Singapore, Prague, Vienna, Lisbon, Madrid, Athens specific well-known establishment names are fine.${profile.interests.some(i => /active|sport/i.test(i)) ? ' Interests include active/sport: suggest a real fitness venue (gym, yoga studio, fitness center, swimming pool, sports club, or climbing gym) as a standalone event with realistic timing (e.g. 7:00–8:30 AM). For non-major cities describe as \'local gym near city centre\' or \'yoga studio in the marina area\' without inventing specific names.' : ''}${profile.notes ? ` Additional notes from the traveller: ${profile.notes}` : ''}`;
+  const prompt = `Regenerate a completely different Day ${cityDayNum} in ${cityName}. Group: ${profile.adults} adults, ${profile.kids} kids. Budget: ${profile.budget}. Vibe: ${profile.tripTypes.join(', ')}. Diet: ${profile.diet.join(', ')||'none'}.\nReturn ONLY valid JSON (no markdown): { "title": "", "subtitle": "", "weather": {"icon":"","temp":"","desc":""}, "stats": {"activities":3,"meals":3,"walking":"","spend":""}, "events": [...same format...], "tips": ["","",""] }\nMake it creative and different. Full day 8am-10pm with real restaurant names and travel segments.`;
   try {
     const newDay = await callClaude(profile, prompt);
     const section = document.getElementById(`day-${dayNum}`);
-    if (newDay.title) section.querySelector('.day-title').textContent = newDay.title;
-    if (newDay.subtitle) section.querySelector('.day-subtitle').textContent = newDay.subtitle;
-    if (newDay.weather) {
-      section.querySelector('.weather-icon').textContent = newDay.weather.icon || '';
-      section.querySelector('.weather-temp').textContent = newDay.weather.temp || '';
-      section.querySelector('.weather-desc').textContent = newDay.weather.desc || '';
-    }
-    const cityObj = state.tripData.itinerary.cities.find(c => c.name === cityName);
-    const events = newDay.events || [];
-    section.querySelector('.timeline').innerHTML = renderEvents(events, cityName, cityObj?.country || '');
+    section.querySelector('.day-title').textContent = newDay.title;
+    section.querySelector('.day-subtitle').textContent = newDay.subtitle;
+    section.querySelector('.weather-icon').textContent = newDay.weather.icon;
+    section.querySelector('.weather-temp').textContent = newDay.weather.temp;
+    section.querySelector('.weather-desc').textContent = newDay.weather.desc;
+    section.querySelector('.timeline').innerHTML = renderEvents(newDay.events, cityIndex);
+    enrichPlaces(state.tripData?.profile?.cityCoords || []);
     const tb = section.querySelector('.tips-box');
-    if (tb && newDay.tips?.length) tb.querySelector('.tips-list').innerHTML = newDay.tips.map(t=>`<li>${t}</li>`).join('');
-    btn.disabled = false; btn.textContent = t('regenerated');
-    setTimeout(() => { btn.textContent = t('regen_day'); }, 2000);
-  } catch(e) { btn.disabled = false; btn.textContent = t('regen_day'); alert(t('alert_regen_error')); }
+    if (tb && newDay.tips) tb.querySelector('.tips-list').innerHTML = newDay.tips.map(t=>`<li>${t}</li>`).join('');
+    btn.disabled = false; btn.textContent = '✓ Regenerated!';
+    setTimeout(() => { btn.textContent = '↻ Regenerate this day'; }, 2000);
+  } catch(e) { btn.disabled = false; btn.textContent = '↻ Regenerate this day'; alert('Could not regenerate. Try again.'); }
 }
 function setSbActive(el) { document.querySelectorAll('.sb-day').forEach(l => l.classList.remove('active')); el.classList.add('active'); }
-(function initLang() {
-  const saved = localStorage.getItem('jounee_lang');
-  if (saved && translations[saved]) {
-    currentLang = saved;
-    const switcher = document.getElementById('lang-switcher');
-    if (switcher) switcher.value = saved;
-    applyTranslations();
-    document.getElementById('step-label').textContent = t('step_of').replace('{n}', state.currentStep + 1);
-  }
-})();
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 function initAutocomplete(input) {
   let validValue = input.value || '';
@@ -685,7 +558,7 @@ function initAutocomplete(input) {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&featuretype=city&limit=5&format=json&addressdetails=1`);
       const data = await res.json();
-      showAcDropdown(input, data, (v, lat, lon) => { validValue = v; const row = input.closest('.city-row'); if (lat) row.dataset.lat = lat; if (lon) row.dataset.lon = lon; populateAirportSelect(row, parseFloat(lat), parseFloat(lon)); });
+      showAcDropdown(input, data, v => { validValue = v; });
     } catch {}
   }, 300);
   input.addEventListener('input', () => doFetch(input.value.trim()));
@@ -696,7 +569,7 @@ function initAutocomplete(input) {
     const ai = items.findIndex(i => i.classList.contains('ac-active'));
     if (e.key === 'ArrowDown') { e.preventDefault(); const ni = (ai + 1) % items.length; items.forEach(i => i.classList.remove('ac-active')); items[ni]?.classList.add('ac-active'); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); const ni = (ai <= 0 ? items.length : ai) - 1; items.forEach(i => i.classList.remove('ac-active')); items[ni]?.classList.add('ac-active'); }
-    else if (e.key === 'Enter') { const a = dd.querySelector('.ac-active'); if (a) { e.preventDefault(); input.value = a.textContent; validValue = a.textContent; const row = input.closest('.city-row'); const lat = parseFloat(a.dataset.lat); const lon = parseFloat(a.dataset.lon); if (a.dataset.lat) row.dataset.lat = a.dataset.lat; if (a.dataset.lon) row.dataset.lon = a.dataset.lon; closeAcDropdown(input); populateAirportSelect(row, lat, lon); } }
+    else if (e.key === 'Enter') { const a = dd.querySelector('.ac-active'); if (a) { e.preventDefault(); input.value = a.textContent; validValue = a.textContent; closeAcDropdown(input); } }
     else if (e.key === 'Escape') { closeAcDropdown(input); input.value = validValue; }
   });
 }
@@ -708,127 +581,59 @@ function showAcDropdown(input, results, onSelect) {
     const country = r.address?.country || r.display_name.split(',').pop().trim();
     const label = `${city}, ${country}`;
     const item = document.createElement('div'); item.className = 'ac-item'; item.textContent = label;
-    item.dataset.lat = r.lat; item.dataset.lon = r.lon;
-    item.addEventListener('mousedown', e => { e.preventDefault(); input.value = label; onSelect(label, r.lat, r.lon); closeAcDropdown(input); });
+    item.addEventListener('mousedown', e => { e.preventDefault(); input.value = label; input.dataset.lat = r.lat; input.dataset.lon = r.lon; onSelect(label); closeAcDropdown(input); });
     dd.appendChild(item);
   });
   input.parentElement.appendChild(dd);
 }
 function closeAcDropdown(input) { input.parentElement.querySelector('.ac-dropdown')?.remove(); }
 document.querySelectorAll('.city-input').forEach(initAutocomplete);
-let _airportData = null;
-let _airportDataPromise = null;
-function loadAirportData() {
-  if (_airportData) return Promise.resolve(_airportData);
-  if (_airportDataPromise) return _airportDataPromise;
-  _airportDataPromise = fetch('https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat')
-    .then(r => r.text())
-    .then(text => {
-      const airports = [];
-      // Parse a CSV line handling both quoted and unquoted fields
-      function parseCSVLine(line) {
-        const fields = []; let i = 0;
-        while (i < line.length) {
-          if (line[i] === '"') {
-            let j = i + 1;
-            while (j < line.length && line[j] !== '"') j++;
-            fields.push(line.slice(i + 1, j));
-            i = j + 1; if (line[i] === ',') i++;
-          } else {
-            let j = line.indexOf(',', i); if (j === -1) j = line.length;
-            fields.push(line.slice(i, j)); i = j + 1;
-          }
-        }
-        return fields;
-      }
-      for (const line of text.split('\n')) {
-        if (!line.trim()) continue;
-        const f = parseCSVLine(line);
-        // airports.dat: 0=id, 1=name, 2=city, 3=country, 4=iata, 5=icao, 6=lat, 7=lon
-        if (f.length < 8) continue;
-        const iata = f[4];
-        if (!iata || iata === '\\N' || iata.length !== 3) continue;
-        const lat = parseFloat(f[6]); const lon = parseFloat(f[7]);
-        if (isNaN(lat) || isNaN(lon)) continue;
-        airports.push({ iata, name: f[1], city: f[2], country: f[3], lat, lon });
-      }
-      _airportData = airports;
-      return airports;
-    });
-  return _airportDataPromise;
-}
-function haversineKm(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
-  return R * 2 * Math.asin(Math.sqrt(a));
-}
-async function populateAirportSelect(row, cityLat, cityLon) {
-  const sels = [...row.querySelectorAll('.airport-select')];
-  if (!sels.length) return;
-  sels.forEach(s => { s.disabled = true; s.innerHTML = '<option value="">Loading…</option>'; });
-  try {
-    const airports = await loadAirportData();
-    const matches = airports
-      .map(a => ({ ...a, dist: haversineKm(cityLat, cityLon, a.lat, a.lon) }))
-      .filter(a => a.dist <= 200)
-      .sort((a, b) => a.dist - b.dist);
-    sels.forEach(s => {
-      s.innerHTML = '<option value="">No airport (opt.)</option>';
-      matches.forEach(a => {
-        const opt = document.createElement('option');
-        opt.value = a.iata; opt.textContent = `${a.iata} — ${a.name}, ${a.country} (${Math.round(a.dist)}km)`; s.appendChild(opt);
-      });
-      if (matches.length === 1) s.value = matches[0].iata;
-      s.disabled = false;
-    });
-  } catch {
-    sels.forEach(s => { s.innerHTML = '<option value="">No airport (opt.)</option>'; s.disabled = false; });
-  }
-}
-async function enrichPlaces(profile, itinerary) {
-  const ENRICHABLE = new Set(['meal', 'sight', 'bar', 'nightlife', 'activity']);
+async function enrichPlaces(cityDataArr) {
+  const cards = document.querySelectorAll('.event-card[data-event-id]');
+  if (!cards.length) return;
+  const cityCoords = {};
+  cityDataArr.forEach((cd, i) => {
+    if (cd && cd.lat && cd.lon) cityCoords[i] = { lat: cd.lat, lon: cd.lon };
+  });
   const events = [];
-  let dc = 0;
-  itinerary.cities.forEach((city, ci) => {
-    const lat = profile.lats?.[ci] || 0;
-    const lon = profile.lons?.[ci] || 0;
-    city.days.forEach(day => {
-      dc++;
-      day.events.forEach((ev, ei) => {
-        if (!ev.isTravel && ENRICHABLE.has(ev.type)) {
-          events.push({ id: `day${dc}-evt${ei}`, title: ev.name, type: ev.type, city: city.name, lat, lon });
-        }
-      });
-    });
+  cards.forEach(card => {
+    const id = card.dataset.eventId;
+    const type = card.dataset.eventType || '';
+    const cityIdx = parseInt(card.dataset.cityIndex || '0', 10);
+    const coords = cityCoords[cityIdx] || {};
+    if (coords.lat && coords.lon) events.push({ id, type, lat: coords.lat, lon: coords.lon });
   });
   if (!events.length) return;
   try {
     const res = await fetch('/api/places', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ events }) });
     if (!res.ok) return;
-    const data = await res.json();
-    data.events.forEach(enriched => {
-      const card = document.querySelector(`[data-event-id="${enriched.id}"]`);
+    const { results } = await res.json();
+    results.forEach(r => {
+      if (r.skip || !r.realName) return;
+      const card = document.querySelector(`.event-card[data-event-id="${r.id}"]`);
       if (!card) return;
-      if (enriched.realName) card.querySelector('.t-name').textContent = enriched.realName;
-      if (enriched.address) {
-        card.querySelectorAll('.t-pill').forEach(pill => {
-          if (pill.textContent.startsWith('📍')) pill.textContent = `📍 ${enriched.address}`;
-        });
+      const titleEl = card.querySelector('.t-name');
+      if (titleEl) titleEl.textContent = r.realName;
+      if (r.address) {
+        const addrPill = [...card.querySelectorAll('.t-pill')].find(p => p.textContent.startsWith('📍'));
+        if (addrPill) addrPill.textContent = `📍 ${r.address}`;
       }
-      if (enriched.mapsUrl) {
-        const link = card.querySelector('.maps-link');
-        if (link) link.href = enriched.mapsUrl;
+      if (r.rating) {
+        if (!card.querySelector('.rating-badge')) {
+          const badge = document.createElement('span');
+          badge.className = 'rating-badge';
+          badge.textContent = `⭐ ${r.rating}`;
+          badge.style.cssText = 'font-size:12px;background:#fff8e1;border:1px solid #ffd54f;border-radius:12px;padding:2px 8px;margin-left:6px;vertical-align:middle;';
+          const titleEl2 = card.querySelector('.t-name');
+          if (titleEl2) titleEl2.appendChild(badge);
+        }
       }
     });
-  } catch {}
+  } catch (e) { console.error('enrichPlaces failed:', e); }
 }
 function resetApp() {
   document.getElementById('itinerary-view').style.display = 'none';
   document.getElementById('itinerary-header-extras').style.display = 'none';
-  document.getElementById('results-action-bar').style.display = 'none';
-  document.getElementById('lang-switcher').style.display = '';
   for (let i = 0; i < 5; i++) { const el = document.getElementById(`ls-${i}`); if(el){ el.className='loading-step'; if(i===0)el.classList.add('active'); }}
   document.getElementById('onboarding-view').style.display = 'flex';
   document.getElementById('onboarding-progress').style.display = 'flex';
