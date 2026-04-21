@@ -33,7 +33,7 @@ export async function onRequestPost(context) {
       max_tokens: 16000,
       stream: true,
       messages,
-      system: body.system ?? "Return ONLY raw valid JSON. No markdown, no explanation, just JSON.\nCRITICAL VENUE NAMING: Always use SPECIFIC real venue names. NEVER generic descriptions.\n- Hotels: real brand name (e.g. 'Divan Mersin', 'DoubleTree by Hilton', 'Radisson Blu'). Never '3-star hotel'.\n- Restaurants: real restaurant name (e.g. 'Guveç Dunyasi', 'Tarihi Adana Ocakbasi'). Never 'local restaurant'.\n- Gyms: real gym name (e.g. \"Gold's Gym\"). Never 'local gym'.\n- Sights: official attraction name.\nFor lesser-known cities: use the most famous real landmark/area name — always SPECIFIC.\nBe concise: max 5 events per day, descriptions under 25 words, empty details arrays.",
+      system: body.system ?? "CRITICAL: Always use SPECIFIC real venue names — never generic descriptions.\nHOTELS: Name the actual hotel brand (e.g. \"Divan Mersin\", \"DoubleTree by Hilton\", \"Radisson Blu\"). Never write \"3-star hotel\" or \"city center hotel\".\nRESTAURANTS: Name the actual restaurant (e.g. \"Güveç Dünyası\", \"Tarihi Adana Ocakbaşı\"). Never write \"a local restaurant\" or \"seafood place\".\nGYMS: Name the actual gym (e.g. \"Gold's Gym\", \"FitLife\"). Never write \"local gym\".\nSIGHTS: Use the official attraction name.\nFor less-known cities: use the most famous real landmark or well-known local spot name — but always a SPECIFIC NAME.\nReturn ONLY raw valid JSON. Be concise: max 5 events per day, descriptions under 15 words, empty details arrays.",
     }),
   });
 
