@@ -33,7 +33,7 @@ export async function onRequestPost(context) {
       max_tokens: 16000,
       stream: true,
       messages,
-      system: body.system ?? "Return ONLY raw valid JSON. Be concise: max 5 events per day, descriptions under 25 words, empty details arrays. Venue naming rule: For non-major cities (not Istanbul, Paris, Rome, Tokyo, New York, Barcelona, London, Amsterdam, Bangkok, Dubai, Berlin, Sydney, Singapore, Prague, Vienna, Lisbon, Madrid, Athens), NEVER invent specific establishment names. Instead anchor every activity to a real known area, landmark, district, waterfront, park or square that genuinely exists in that city — e.g. for Mersin: 'Dinner at the Marina waterfront', 'Visit Kızkalesi castle', 'Walk the seafront promenade'. For major cities listed above, specific well-known establishment names are fine.",
+      system: body.system ?? "CRITICAL: Always use SPECIFIC real venue names — never generic descriptions.\nHOTELS: Name the actual hotel brand (e.g. \"Divan Mersin\", \"DoubleTree by Hilton\", \"Radisson Blu\"). Never write \"3-star hotel\" or \"city center hotel\".\nRESTAURANTS: Name the actual restaurant (e.g. \"Güveç Dünyası\", \"Tarihi Adana Ocakbaşı\"). Never write \"a local restaurant\" or \"seafood place\".\nGYMS: Name the actual gym (e.g. \"Gold's Gym\", \"FitLife\"). Never write \"local gym\".\nSIGHTS: Use the official attraction name.\nFor less-known cities: use the most famous real landmark or well-known local spot name — but always a SPECIFIC NAME.\nReturn ONLY raw valid JSON. Be concise: max 5 events per day, descriptions under 15 words, empty details arrays.",
     }),
   });
 
