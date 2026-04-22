@@ -676,7 +676,38 @@ async function regenDay(dayNum, cityName, cityDayNum) {
   const btn = document.querySelector(`#day-${dayNum} .regen-btn`);
   btn.disabled = true; btn.textContent = t('regenerating');
   const profile = state.tripData.profile;
-  const prompt = `Regenerate a completely different Day ${cityDayNum} in ${cityName}. Group: ${profile.adults} adults, ${profile.kids} kids. Budget: ${profile.budget}. Vibe: ${profile.tripTypes.join(', ')}. Diet: ${profile.diet.join(', ')||'none'}. Interests: ${profile.interests.join(', ')||'general'}.\nReturn ONLY valid JSON (no markdown) matching this exact structure:\n{"title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"9:00 AM","type":"sight","tag":"Sightseeing","name":"Place name","desc":"One sentence description under 25 words","details":[],"isTravel":false},{"time":"10:30 AM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 1 to City Center (~€2)","travelDuration":"15 min","isTravel":true},{"time":"1:00 PM","type":"meal","tag":"Lunch","name":"Restaurant or area name","desc":"One sentence description","details":[],"isTravel":false}],"tips":["tip1","tip2","tip3"]}\nEvent types: sight, meal, hotel, travel. For travel segments set isTravel:true and include travelMode (emoji), travelDesc (route + cost), travelDuration. For all other events set isTravel:false with type/tag/name/desc/details fields. Include travel segments between activities. Full day 8am-10pm. Always include dinner (type=meal, tag=Dinner) around 19:00-20:00. VENUE NAMING — HARD RULE: Every restaurant, bar, hotel, gym, and attraction must be a SPECIFIC NAMED PLACE for ALL cities. NEVER write "Dinner at the Marina waterfront", "local köfte house", "local gym", or any description instead of a name. Always output the actual establishment name (e.g. "İskele Marin Restaurant", "Develi", "Gold's Gym"). If unsure, pick the best-known real establishment of that type in ${cityName}.${profile.interests.some(i => /active|sport/i.test(i)) ? ` Include a specific named fitness venue (gym, yoga studio, pool, sports club) as a standalone morning event.` : ''}${profile.notes ? ` Additional notes from the traveller: ${profile.notes}` : ''}`;
+  // Bug 1: build arrival constraints for day 1
+  const src = profile.cityData || profile.cities.map((c,i) => ({ city: c, arrivalTime: profile.arrivalTimes?.[i]||'', arrivalAirport: profile.airports?.[i]||'' }));
+  let arrivalContext = '';
+  if (cityDayNum === 1) {
+    const cityInfo = src.find(d => d.city === cityName);
+    if (cityInfo?.arrivalTime) {
+      const h = parseInt(cityInfo.arrivalTime.split(':')[0], 10);
+      const arr12 = to12h(cityInfo.arrivalTime);
+      const airp = cityInfo.arrivalAirport ? ` via ${cityInfo.arrivalAirport}` : '';
+      if (h >= 18) {
+        arrivalContext = ` ARRIVAL DAY: User arrives at ${arr12}${airp}. After 18:00 arrival — include ONLY hotel check-in (type=hotel,tag=Hotel Check-in) + dinner. NO breakfast, NO lunch, NO morning/afternoon activities.`;
+      } else if (h >= 14) {
+        arrivalContext = ` ARRIVAL DAY: User arrives at ${arr12}${airp}. Start events from ${arr12}. Include hotel check-in (type=hotel,tag=Hotel Check-in) as first event, then afternoon activity + dinner. NO breakfast, NO lunch.`;
+      } else {
+        arrivalContext = ` ARRIVAL DAY: User arrives at ${arr12}${airp}. Start ALL events from ${arr12}. Include hotel check-in (type=hotel,tag=Hotel Check-in) as the first event, then activities and remaining meals.`;
+      }
+    } else {
+      arrivalContext = ` ARRIVAL DAY: This is the arrival day. Include hotel check-in (type=hotel,tag=Hotel Check-in) as the first event of the day.`;
+    }
+  }
+  // Bug 2: capture old hotel name before regeneration so we can propagate a change
+  let oldHotelName = null;
+  if (cityDayNum === 1) {
+    const cityObj0 = state.tripData.itinerary.cities.find(c => c.name === cityName);
+    const day1 = cityObj0?.days?.find(d => d.dayNumber === 1) || cityObj0?.days?.[0];
+    if (day1?.events) { const he = day1.events.find(e => e.type === 'hotel'); if (he?.name) oldHotelName = he.name; }
+    if (!oldHotelName) {
+      const hotelDot = document.querySelector(`#day-${dayNum} .t-dot.hotel`);
+      if (hotelDot) { const nameEl = hotelDot.closest('.t-event')?.querySelector('.t-name'); if (nameEl) oldHotelName = nameEl.textContent.trim(); }
+    }
+  }
+  const prompt = `Regenerate a completely different Day ${cityDayNum} in ${cityName}.${arrivalContext} Group: ${profile.adults} adults, ${profile.kids} kids. Budget: ${profile.budget}. Vibe: ${profile.tripTypes.join(', ')}. Diet: ${profile.diet.join(', ')||'none'}. Interests: ${profile.interests.join(', ')||'general'}.\nReturn ONLY valid JSON (no markdown) matching this exact structure:\n{"title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"9:00 AM","type":"sight","tag":"Sightseeing","name":"Place name","desc":"One sentence description under 25 words","details":[],"isTravel":false},{"time":"10:30 AM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 1 to City Center (~€2)","travelDuration":"15 min","isTravel":true},{"time":"1:00 PM","type":"meal","tag":"Lunch","name":"Restaurant or area name","desc":"One sentence description","details":[],"isTravel":false}],"tips":["tip1","tip2","tip3"]}\nEvent types: sight, meal, hotel, travel. For travel segments set isTravel:true and include travelMode (emoji), travelDesc (route + cost), travelDuration. For all other events set isTravel:false with type/tag/name/desc/details fields. Include travel segments between activities. Full day 8am-10pm. Always include dinner (type=meal, tag=Dinner) around 19:00-20:00. VENUE NAMING — HARD RULE: Every restaurant, bar, hotel, gym, and attraction must be a SPECIFIC NAMED PLACE for ALL cities. NEVER write "Dinner at the Marina waterfront", "local köfte house", "local gym", or any description instead of a name. Always output the actual establishment name (e.g. "İskele Marin Restaurant", "Develi", "Gold's Gym"). If unsure, pick the best-known real establishment of that type in ${cityName}.${profile.interests.some(i => /active|sport/i.test(i)) ? ` Include a specific named fitness venue (gym, yoga studio, pool, sports club) as a standalone morning event.` : ''}${profile.notes ? ` Additional notes from the traveller: ${profile.notes}` : ''}`;
   try {
     const newDay = await callClaude(profile, prompt);
     const section = document.getElementById(`day-${dayNum}`);
@@ -689,9 +720,29 @@ async function regenDay(dayNum, cityName, cityDayNum) {
     }
     const cityObj = state.tripData.itinerary.cities.find(c => c.name === cityName);
     const events = newDay.events || [];
-    section.querySelector('.timeline').innerHTML = renderEvents(events, cityName, cityObj?.country || '');
+    section.querySelector('.timeline').innerHTML = renderEvents(events, `day${dayNum}`, cityName, cityObj?.country || '');
     const tb = section.querySelector('.tips-box');
     if (tb && newDay.tips?.length) tb.querySelector('.tips-list').innerHTML = newDay.tips.map(t=>`<li>${t}</li>`).join('');
+    // Bug 2: propagate new hotel name to all other day cards
+    if (cityDayNum === 1 && oldHotelName) {
+      const newHotelEv = events.find(e => e.type === 'hotel');
+      const newHotelName = newHotelEv?.name;
+      if (newHotelName && newHotelName !== oldHotelName) {
+        const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const encOld = encodeURIComponent(oldHotelName);
+        const encNew = encodeURIComponent(newHotelName);
+        document.querySelectorAll('.day-section').forEach(sec => {
+          if (sec.id === `day-${dayNum}`) return;
+          let html = sec.innerHTML;
+          if (encOld !== oldHotelName) html = html.replace(new RegExp(escRe(encOld), 'g'), encNew);
+          html = html.replace(new RegExp(escRe(oldHotelName), 'gi'), newHotelName);
+          sec.innerHTML = html;
+        });
+        // Keep state in sync so a second regen on day 1 sees the updated name
+        const day1 = cityObj?.days?.find(d => d.dayNumber === 1) || cityObj?.days?.[0];
+        if (day1?.events) { const he = day1.events.find(e => e.type === 'hotel'); if (he) he.name = newHotelName; }
+      }
+    }
     btn.disabled = false; btn.textContent = t('regenerated');
     setTimeout(() => { btn.textContent = t('regen_day'); }, 2000);
   } catch(e) { btn.disabled = false; btn.textContent = t('regen_day'); alert(t('alert_regen_error')); }
