@@ -29,7 +29,7 @@ export async function onRequestPost(context) {
     park: ['park'], museum: ['museum'], beach: ['park'],
   };
 
-  const FIELD_MASK = 'places.displayName,places.formattedAddress,places.rating,places.location,places.googleMapsUri,places.userRatingCount,places.businessStatus';
+  const FIELD_MASK = 'places.displayName,places.formattedAddress,places.rating,places.location,places.googleMapsUri,places.userRatingCount,places.businessStatus,places.primaryType,places.types';
 
   const STOP_WORDS = new Set(['the', 'a', 'an', 'and', 'of', 'de', 'la', 'le', 'el',
     'restaurant', 'restaurante', 'ristorante', 'hotel', 'bar', 'cafe', 'café', 'club',
@@ -47,8 +47,19 @@ export async function onRequestPost(context) {
     return overlap >= 1;
   };
 
-  const textSearch = async (query, lat, lon) => {
+  const textSearch = async (query, lat, lon, includedType) => {
     try {
+      const body = {
+        textQuery: query,
+        locationBias: {
+          circle: {
+            center: { latitude: parseFloat(lat), longitude: parseFloat(lon) },
+            radius: 20000.0
+          }
+        },
+        maxResultCount: 5
+      };
+      if (includedType) body.includedType = includedType;
       const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
         method: 'POST',
         headers: {
@@ -56,16 +67,7 @@ export async function onRequestPost(context) {
           'X-Goog-Api-Key': GOOGLE_API_KEY,
           'X-Goog-FieldMask': FIELD_MASK
         },
-        body: JSON.stringify({
-          textQuery: query,
-          locationBias: {
-            circle: {
-              center: { latitude: parseFloat(lat), longitude: parseFloat(lon) },
-              radius: 20000.0
-            }
-          },
-          maxResultCount: 5
-        })
+        body: JSON.stringify(body)
       });
       if (!res.ok) return [];
       const data = await res.json();
@@ -116,22 +118,36 @@ export async function onRequestPost(context) {
       const { id, title, city, type, lat, lon } = event;
       const typeKey = (type || '').toLowerCase().replace(/[\s_]+/g, '');
       const includedTypes = typeMap[typeKey] || ['point_of_interest'];
+      const expectedTypes = new Set(includedTypes);
+      const primaryType = includedTypes[0];
       if (!lat || !lon || isNaN(parseFloat(lat)) || isNaN(parseFloat(lon))) return { id, skip: true };
 
-      // Step 1: verify Claude's named venue via Text Search.
+      const typeMatches = (place) => {
+        if (!expectedTypes.size) return true;
+        if (place.primaryType && expectedTypes.has(place.primaryType)) return true;
+        if (Array.isArray(place.types) && place.types.some(t => expectedTypes.has(t))) return true;
+        return false;
+      };
+
+      // Step 1: verify Claude's named venue via Text Search, constrained by type so
+      // a cafe cannot be accepted as a hotel, etc.
       if (title && title.trim()) {
         const query = city ? `${title} ${city}` : title;
-        const textPlaces = await textSearch(query, lat, lon);
+        const textPlaces = await textSearch(query, lat, lon, primaryType);
         const verified = textPlaces.find(p =>
           p.businessStatus === 'OPERATIONAL' &&
+          typeMatches(p) &&
           nameLooksLikeMatch(title, p.displayName.text)
         );
         if (verified) return formatResult(id, verified, { verified: true });
       }
 
-      // Step 2: fall back to nearby-top-rated as a replacement.
+      // Step 2: fall back to nearby-top-rated as a replacement (already type-filtered).
       const nearby = await nearbySearch(includedTypes, lat, lon);
-      const open = nearby.filter(p => p.businessStatus === 'OPERATIONAL' || !p.businessStatus);
+      const open = nearby.filter(p =>
+        (p.businessStatus === 'OPERATIONAL' || !p.businessStatus) &&
+        typeMatches(p)
+      );
       if (!open.length) return { id, skip: true };
       const top = open.sort((a, b) => (b.rating || 0) - (a.rating || 0))[0];
       return formatResult(id, top, { replaced: true });
