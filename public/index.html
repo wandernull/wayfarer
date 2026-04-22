@@ -489,6 +489,29 @@ function adjust(key, delta) { state[key] = Math.max(key === 'adults' ? 1 : 0, st
 function toggleChip(el) { el.classList.toggle('selected'); }
 function singleChip(el, groupId) { el.closest('.chip-group').querySelectorAll('.chip').forEach(c => c.classList.remove('selected')); el.classList.add('selected'); }
 function selectBudget(el) { document.querySelectorAll('#budget .budget-option').forEach(b => b.classList.remove('selected')); el.classList.add('selected'); }
+function calcLatestEndTime(departureTime, hasAirport) {
+  if (!departureTime) return null;
+  const [h, m] = departureTime.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  const depMins = h * 60 + m;
+  const bufferMins = hasAirport ? (3 * 60 + 45) : 30;
+  const latestMins = depMins - bufferMins;
+  if (latestMins < 0) return null;
+  const lh = Math.floor(latestMins / 60);
+  const lm = latestMins % 60;
+  const period = lh < 12 ? 'AM' : 'PM';
+  const displayH = lh % 12 || 12;
+  return `${displayH}:${String(lm).padStart(2, '0')} ${period}`;
+}
+function to12h(t) {
+  if (!t) return '';
+  if (/AM|PM/i.test(t)) return t;
+  const [h, m] = t.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return t;
+  const period = h < 12 ? 'AM' : 'PM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
 function getTripProfile() {
   const rows = [...document.querySelectorAll('.city-row')];
   const cityData = rows.map(row => ({
@@ -563,8 +586,14 @@ async function callClaude(profile, customPrompt) {
   const cityList = src.map(d => {
     const airp = d.arrivalAirport ? ` via ${d.arrivalAirport}` : '';
     const arr = d.arrivalTime ? `, arrives at ${d.arrivalTime}` : '';
+    const hasDepAirport = !!d.departureAirport;
+    const latestEnd = d.departureTime ? calcLatestEndTime(d.departureTime, hasDepAirport) : null;
     const depAirp = d.departureAirport ? ` via ${d.departureAirport}` : '';
-    const dep = d.departureTime ? `, departs at ${d.departureTime}${depAirp}` : '';
+    const dep = d.departureTime
+      ? (hasDepAirport
+        ? `, departure flight at ${d.departureTime}${depAirp} — allow 45min travel to airport + 3h airport check-in, last activity must end by ${latestEnd}`
+        : `, departing city at ${d.departureTime} by other means — last activity must end by ${latestEnd}`)
+      : '';
     return `${d.city} (${d.nights} nights${airp}${arr}${dep})`;
   }).join(', ');
   const langInstruction = currentLang !== 'en' ? ` Respond entirely in ${langNames[currentLang]} language.` : '';
@@ -605,13 +634,13 @@ function renderEvents(events, idPrefix, cityName, country) {
   return events.map((ev,i) => {
     const isLast = i === events.length-1;
     const connector = isLast ? '' : '<div class="t-connector"></div>';
-    if (ev.isTravel) return `<div class="t-event"><div class="t-time-col"><div class="t-dot travel"></div>${connector}</div><div class="t-body"><div class="t-card travel-card"><div class="travel-row"><span class="t-time">${ev.time}</span><span style="font-size:15px">${ev.travelMode}</span><span style="font-size:13px;color:var(--text-secondary)">${ev.travelDesc}</span><span class="travel-dur">${ev.travelDuration}</span></div></div></div></div>`;
+    if (ev.isTravel) return `<div class="t-event"><div class="t-time-col"><div class="t-dot travel"></div>${connector}</div><div class="t-body"><div class="t-card travel-card"><div class="travel-row"><span class="t-time">${to12h(ev.time)}</span><span style="font-size:15px">${ev.travelMode}</span><span style="font-size:13px;color:var(--text-secondary)">${ev.travelDesc}</span><span class="travel-dur">${ev.travelDuration}</span></div></div></div></div>`;
     const dotClass = {meal:'meal',sight:'sight',hotel:'hotel',end:'end'}[ev.type]||'sight';
     const tagClass = {meal:'tag-meal',sight:'tag-sight',hotel:'tag-hotel',end:'tag-end',travel:'tag-travel'}[ev.type]||'tag-sight';
     const dataId = idPrefix ? ` data-event-id="${idPrefix}-evt${i}"` : '';
     const mapsQ = encodeURIComponent(`${ev.name} ${cityName||''} ${country||''}`.trim());
     const mapsLink = `<a class="maps-link" href="https://www.google.com/maps/search/${mapsQ}" target="_blank" rel="noopener">📍 Find on Maps</a>`;
-    return `<div class="t-event"><div class="t-time-col"><div class="t-dot ${dotClass}"></div>${connector}</div><div class="t-body"><div class="t-card"${dataId}><div class="t-top"><span class="t-time">${ev.time}</span><span class="t-tag ${tagClass}">${u(ev.tag)}</span></div><div class="t-name">${ev.name}</div>${ev.desc?`<div class="t-desc">${ev.desc}</div>`:''}<div class="t-details">${(ev.details||[]).map(d=>`<span class="t-pill">${d}</span>`).join('')}</div>${mapsLink}</div></div></div>`;
+    return `<div class="t-event"><div class="t-time-col"><div class="t-dot ${dotClass}"></div>${connector}</div><div class="t-body"><div class="t-card"${dataId}><div class="t-top"><span class="t-time">${to12h(ev.time)}</span><span class="t-tag ${tagClass}">${u(ev.tag)}</span></div><div class="t-name">${ev.name}</div>${ev.desc?`<div class="t-desc">${ev.desc}</div>`:''}<div class="t-details">${(ev.details||[]).map(d=>`<span class="t-pill">${d}</span>`).join('')}</div>${mapsLink}</div></div></div>`;
   }).join('');
 }
 function showItinerary(profile, itinerary) {
@@ -704,10 +733,12 @@ function initAutocomplete(input) {
 function showAcDropdown(input, results, onSelect) {
   closeAcDropdown(input); if (!results.length) return;
   const dd = document.createElement('div'); dd.className = 'ac-dropdown';
+  const seen = new Set();
   results.forEach(r => {
     const city = r.name || r.display_name.split(',')[0].trim();
     const country = r.address?.country || r.display_name.split(',').pop().trim();
     const label = `${city}, ${country}`;
+    if (seen.has(label)) return; seen.add(label);
     const item = document.createElement('div'); item.className = 'ac-item'; item.textContent = label;
     item.dataset.lat = r.lat; item.dataset.lon = r.lon;
     item.addEventListener('mousedown', e => { e.preventDefault(); input.value = label; onSelect(label, r.lat, r.lon); closeAcDropdown(input); });
