@@ -676,26 +676,54 @@ async function regenDay(dayNum, cityName, cityDayNum) {
   const btn = document.querySelector(`#day-${dayNum} .regen-btn`);
   btn.disabled = true; btn.textContent = t('regenerating');
   const profile = state.tripData.profile;
-  // Bug 1: build arrival constraints for day 1
-  const src = profile.cityData || profile.cities.map((c,i) => ({ city: c, arrivalTime: profile.arrivalTimes?.[i]||'', arrivalAirport: profile.airports?.[i]||'' }));
+  // Day-aware context from the current itinerary state
+  const itinCities = state.tripData.itinerary?.cities || [];
+  const cityCtx = itinCities.find(c => c.name === cityName);
+  const cityDays = cityCtx?.days || [];
+  const isFirstDayOfCity = cityDayNum === 1;
+  const isLastDayOfCity = cityDays.length > 0 && cityDayNum === cityDays.length;
+  const src = profile.cityData || profile.cities.map((c,i) => ({ city: c, arrivalTime: profile.arrivalTimes?.[i]||'', arrivalAirport: profile.airports?.[i]||'', departureTime: '', departureAirport: '' }));
+  const cityInfo = src.find(d => d.city === cityName) || {};
+  // Arrival context (4-tier energy ramp based on arrival hour)
   let arrivalContext = '';
-  if (cityDayNum === 1) {
-    const cityInfo = src.find(d => d.city === cityName);
-    if (cityInfo?.arrivalTime) {
+  if (isFirstDayOfCity) {
+    if (cityInfo.arrivalTime) {
       const h = parseInt(cityInfo.arrivalTime.split(':')[0], 10);
       const arr12 = to12h(cityInfo.arrivalTime);
       const airp = cityInfo.arrivalAirport ? ` via ${cityInfo.arrivalAirport}` : '';
-      if (h >= 18) {
-        arrivalContext = ` ARRIVAL DAY: User arrives at ${arr12}${airp}. After 18:00 arrival — include ONLY hotel check-in (type=hotel,tag=Hotel Check-in) + dinner. NO breakfast, NO lunch, NO morning/afternoon activities.`;
+      if (h >= 21) {
+        arrivalContext = ` ARRIVAL DAY — HARD RULE: User arrives at ${arr12}${airp}. After 21:00 arrival: include ONLY the airport→hotel transfer (if airport set) and hotel check-in. SKIP dinner unless the hotel has on-site dining. NO nightclubs, beach clubs, tours, cross-area travel, breakfast, or lunch. Real travelers go straight to bed.`;
+      } else if (h >= 18) {
+        arrivalContext = ` ARRIVAL DAY — HARD RULE: User arrives at ${arr12}${airp}. After 18:00 arrival: transfer (if airport) → hotel check-in → ONE casual dinner within 15 minutes of the hotel → end. NO nightclubs, beach clubs, multi-hour tours, cross-area travel, breakfast, or lunch. Real travelers are tired and jet-lagged.`;
       } else if (h >= 14) {
-        arrivalContext = ` ARRIVAL DAY: User arrives at ${arr12}${airp}. Start events from ${arr12}. Include hotel check-in (type=hotel,tag=Hotel Check-in) as first event, then afternoon activity + dinner. NO breakfast, NO lunch.`;
+        arrivalContext = ` ARRIVAL DAY — HARD RULE: User arrives at ${arr12}${airp}. Start events from ${arr12}: transfer (if airport) → hotel check-in → ONE afternoon activity within a 15-minute radius of the hotel → dinner. NO breakfast, NO lunch, NO cross-area travel.`;
       } else {
-        arrivalContext = ` ARRIVAL DAY: User arrives at ${arr12}${airp}. Start ALL events from ${arr12}. Include hotel check-in (type=hotel,tag=Hotel Check-in) as the first event, then activities and remaining meals.`;
+        arrivalContext = ` ARRIVAL DAY: User arrives at ${arr12}${airp}. Start ALL events from ${arr12}: transfer (if airport) → hotel check-in first → then activities and remaining meals, all within a single neighborhood.`;
       }
     } else {
-      arrivalContext = ` ARRIVAL DAY: This is the arrival day. Include hotel check-in (type=hotel,tag=Hotel Check-in) as the first event of the day.`;
+      arrivalContext = ` ARRIVAL DAY: Include hotel check-in (type=hotel, tag=Hotel Check-in) as the first event of the day, then activities.`;
     }
   }
+  // Departure context (only if last day of city AND departure time set)
+  let departureContext = '';
+  if (isLastDayOfCity && cityInfo.departureTime) {
+    const depAirp = cityInfo.departureAirport ? ` via ${cityInfo.departureAirport}` : '';
+    const latestEnd = calcLatestEndTime(cityInfo.departureTime, !!cityInfo.departureAirport);
+    const buffer = cityInfo.departureAirport ? '3 hours (airport transfer + check-in)' : '1 hour';
+    departureContext = ` DEPARTURE DAY — HARD RULE: User departs at ${cityInfo.departureTime}${depAirp}. All activities must end by ${latestEnd} (${buffer} buffer). Never schedule anything that would conflict with the departure window.`;
+  }
+  // Continuity hint from adjacent days — avoid duplicating themes/venues
+  const prevDay = cityDayNum > 1 ? cityDays[cityDayNum - 2] : null;
+  const nextDay = cityDayNum < cityDays.length ? cityDays[cityDayNum] : null;
+  const adj = [];
+  if (prevDay?.title) adj.push(`previous day was "${prevDay.title}"`);
+  if (nextDay?.title) adj.push(`next day is "${nextDay.title}"`);
+  const continuityContext = adj.length ? ` CONTINUITY: In this trip, ${adj.join(' and ')} — do not duplicate those venues or themes; pick a distinct sub-area or angle.` : '';
+  // Good/bad arrival example (only for day 1 of a city)
+  const arrivalExample = isFirstDayOfCity ? ` ARRIVAL FLOW — GOOD vs BAD: BAD = airport arrival 20:00 → hotel 21:30 → nightclub in a different sub-area at 22:30 (forbidden: cross-area + high energy after late arrival). GOOD = airport arrival 20:00 → transfer → hotel check-in 21:30 → dinner within 5 min of hotel at 22:00 → end of day.` : '';
+  // Conditional interest blocks
+  const nightlifeStr = (profile.interests.some(i => /night/i.test(i)) || profile.tripTypes.some(v => /night/i.test(v))) ? ` If nightlife fits (and this is not a late arrival day), include 1-2 nightlife events after dinner (bars, clubs, dancing, live music — type=sight, tag=Nightlife) starting around 21:30–22:00; flow: afternoon activity → dinner (~19:30) → nightlife venue (~21:30), all in the same sub-area.` : '';
+  const activeStr = profile.interests.some(i => /active|sport/i.test(i)) ? ` Include a specific named fitness venue (gym, yoga studio, pool, sports club) as a standalone morning event.` : '';
   // Bug 2: capture old hotel name before regeneration so we can propagate a change
   let oldHotelName = null;
   if (cityDayNum === 1) {
@@ -707,7 +735,12 @@ async function regenDay(dayNum, cityName, cityDayNum) {
       if (hotelDot) { const nameEl = hotelDot.closest('.t-event')?.querySelector('.t-name'); if (nameEl) oldHotelName = nameEl.textContent.trim(); }
     }
   }
-  const prompt = `Regenerate a completely different Day ${cityDayNum} in ${cityName}.${arrivalContext} Group: ${profile.adults} adults, ${profile.kids} kids. Budget: ${profile.budget}. Vibe: ${profile.tripTypes.join(', ')}. Diet: ${profile.diet.join(', ')||'none'}. Interests: ${profile.interests.join(', ')||'general'}.\nReturn ONLY valid JSON (no markdown) matching this exact structure:\n{"title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"9:00 AM","type":"sight","tag":"Sightseeing","name":"Place name","desc":"One sentence description under 25 words","details":[],"isTravel":false},{"time":"10:30 AM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 1 to City Center (~€2)","travelDuration":"15 min","isTravel":true},{"time":"1:00 PM","type":"meal","tag":"Lunch","name":"Restaurant or area name","desc":"One sentence description","details":[],"isTravel":false}],"tips":["tip1","tip2","tip3"]}\nEvent types: sight, meal, hotel, travel. For travel segments set isTravel:true and include travelMode (emoji), travelDesc (route + cost), travelDuration. For all other events set isTravel:false with type/tag/name/desc/details fields. Include travel segments between activities. Full day 8am-10pm. Always include dinner (type=meal, tag=Dinner) around 19:00-20:00. GEOGRAPHIC COHERENCE — HARD RULE: All events on this day must be in a single neighborhood/sub-area of ${cityName} and within ~20 minutes of each other by local transport. Never send the traveler across distant sub-areas in one day (e.g. do not mix Ubud and Kuta in Bali, Shibuya and Asakusa in Tokyo, Waikiki and North Shore in Oahu, Sultanahmet and Kadıköy in Istanbul). VENUE NAMING — HARD RULE: Every restaurant, bar, hotel, gym, and attraction must be a SPECIFIC NAMED PLACE for ALL cities. NEVER write "Dinner at the Marina waterfront", "local köfte house", "local gym", or any description instead of a name. Always output the actual establishment name (e.g. "İskele Marin Restaurant", "Develi", "Gold's Gym"). If unsure, pick the best-known real establishment of that type in ${cityName}.${profile.interests.some(i => /active|sport/i.test(i)) ? ` Include a specific named fitness venue (gym, yoga studio, pool, sports club) as a standalone morning event.` : ''}${profile.notes ? ` Additional notes from the traveller: ${profile.notes}` : ''}`;
+  const prompt = `You are an expert travel planner. Regenerate a completely different Day ${cityDayNum} in ${cityName}.${arrivalContext}${departureContext}${continuityContext}
+PROFILE: ${profile.adults} adults, ${profile.kids} kids | BUDGET: ${profile.budget} | VIBE: ${profile.tripTypes.join(', ')||'general'} | PACE: ${profile.pace} | STAY: ${profile.accom} | DIET: ${profile.diet.join(', ')||'none'} | INTERESTS: ${profile.interests.join(', ')||'general'} | ACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | INDOOR BACKUP: ${profile.indoorAlt}
+Return ONLY valid JSON (no markdown) matching this exact structure:
+{"title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"9:00 AM","type":"sight","tag":"Sightseeing","name":"Place name","desc":"One sentence description","details":["📍 Full address","⏱ ~2 hrs","🎟 €15 – book online","📅 Book in advance"],"isTravel":false},{"time":"10:30 AM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 1 → City Center (~€2)","travelDuration":"15 min","isTravel":true},{"time":"1:00 PM","type":"meal","tag":"Lunch","name":"Restaurant Name","desc":"One sentence description","details":["📍 Full address","⏱ ~1.5 hrs","💶 ~€35/person","📅 Reserve 2 days ahead"],"isTravel":false},{"time":"8:00 PM","type":"hotel","tag":"Hotel","name":"Hotel Name","desc":"One sentence description","details":["📍 Full address","🏨 ~€120/night","🛎 Early check-in available"],"isTravel":false}],"tips":["tip1","tip2","tip3"]}
+Details rules: Hotels→["📍 address","🏨 ~€X/night","🛎 check-in note"]; Restaurants→["📍 address","⏱ ~1.5 hrs","💶 ~€X/person","📅 reservation note"]; Sights→["📍 address","⏱ ~X hrs","🎟 ticket info","📅 booking note"]; Travel cards→travelDesc must include full route with line names/stops and cost.
+Event types: sight, meal, hotel, travel. For travel segments set isTravel:true and include travelMode (emoji), travelDesc (route + cost), travelDuration. For all other events set isTravel:false with type/tag/name/desc/details fields. Include travel segments between activities. Max 6 events per day, full day 8am-10pm (unless overridden by the arrival/departure context above). Always include dinner (type=meal, tag=Dinner) around 19:00–20:00 — never skip dinner unless the arrival/departure context explicitly says so. GEOGRAPHIC COHERENCE — HARD RULE (most important rule): All events on this day must be in a single neighborhood/sub-area of ${cityName} and within ~20 minutes of each other by local transport. Never send the traveler across distant sub-areas in one day (e.g. do not mix Ubud and Kuta in Bali, Shibuya and Asakusa in Tokyo, Waikiki and North Shore in Oahu, Sultanahmet and Kadıköy in Istanbul). VENUE NAMING — HARD RULE: Every restaurant, bar, hotel, gym, and attraction must be a SPECIFIC NAMED PLACE for ALL cities. NEVER write "Dinner at the Marina waterfront", "local köfte house", "local gym", or any description instead of a name. Always output the actual establishment name (e.g. "İskele Marin Restaurant", "Develi", "Gold's Gym"). If unsure, pick the best-known real establishment of that type in ${cityName}.${nightlifeStr}${activeStr}${arrivalExample}${profile.notes ? `\nAdditional notes from the traveller: ${profile.notes}` : ''}`;
   try {
     const newDay = await callClaude(profile, prompt);
     const section = document.getElementById(`day-${dayNum}`);
