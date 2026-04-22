@@ -789,12 +789,27 @@ async function populateAirportSelect(row, cityLat, cityLon) {
   }
 }
 async function enrichPlaces(profile, itinerary) {
-  const ENRICHABLE = new Set(['meal', 'sight', 'bar', 'nightlife', 'activity']);
+  const ENRICHABLE = new Set(['meal', 'sight', 'bar', 'nightlife', 'activity', 'hotel']);
+
+  // Resolve coords per city — use autocomplete-stored value, fall back to Nominatim geocoding
+  const cityCoords = {};
+  for (let ci = 0; ci < itinerary.cities.length; ci++) {
+    let lat = profile.lats?.[ci] || 0;
+    let lon = profile.lons?.[ci] || 0;
+    if (!lat || !lon) {
+      try {
+        const geo = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(itinerary.cities[ci].name)}&limit=1&format=json`);
+        const gd = await geo.json();
+        if (gd[0]) { lat = parseFloat(gd[0].lat); lon = parseFloat(gd[0].lon); }
+      } catch {}
+    }
+    cityCoords[ci] = { lat, lon };
+  }
+
   const events = [];
   let dc = 0;
   itinerary.cities.forEach((city, ci) => {
-    const lat = profile.lats?.[ci] || 0;
-    const lon = profile.lons?.[ci] || 0;
+    const { lat, lon } = cityCoords[ci];
     city.days.forEach(day => {
       dc++;
       day.events.forEach((ev, ei) => {
