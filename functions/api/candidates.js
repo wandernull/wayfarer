@@ -21,7 +21,7 @@ export async function onRequestPost(context) {
 
   const FIELD_MASK = 'places.displayName,places.formattedAddress,places.rating,places.location,places.googleMapsUri,places.userRatingCount,places.businessStatus,places.primaryType,places.types';
 
-  const fetchBucket = async ({ includedTypes, maxResults, lat, lon, radius = 15000 }) => {
+  const fetchBucket = async ({ includedTypes, maxResults, lat, lon, radius = 10000 }) => {
     try {
       const res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
         method: 'POST',
