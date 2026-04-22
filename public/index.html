@@ -626,11 +626,20 @@ async function fetchPlanForCity(cityName, nights, profile, extras = {}) {
         arrivalAirport: extras.arrivalAirport || ''
       })
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[plan] fetch failed for ${cityName}: HTTP ${res.status}`);
+      return null;
+    }
     const data = await res.json();
-    if (!data.options || !data.options.length) return null;
+    if (!data.options || !data.options.length) {
+      console.warn(`[plan] no valid options for ${cityName}`, data);
+      return null;
+    }
     return data;
-  } catch { return null; }
+  } catch (e) {
+    console.warn(`[plan] network error for ${cityName}`, e);
+    return null;
+  }
 }
 function buildLegs(profile, planByCity) {
   const legs = [];
@@ -817,10 +826,21 @@ async function startGeneration() {
 
     // 2. Build legs from plans (sub-areas as trip legs). Fallback: one leg = user's city.
     const legs = buildLegs(profile, planByCity);
+    const plannedCities = Object.keys(planByCity);
+    const unplannedCities = profile.cities.filter(c => !plannedCities.includes(c));
+    if (unplannedCities.length) console.warn('[plan] falling back to single-base for unplanned cities:', unplannedCities);
+    console.debug('[legs]', legs.map(l => `${l.subArea}(${l.nights}n${l.arrivalAirport ? ' arr ' + l.arrivalAirport : ''}${l.departureTime ? ' dep ' + l.departureTime : ''})`).join(' → '));
 
     // 3. Fetch candidates per sub-area in parallel, at tight radius.
     let candidates = null;
-    try { candidates = await fetchCandidatesForLegs(profile, legs); } catch (e) { console.warn('Candidates fetch failed, falling back to free-form', e); }
+    try { candidates = await fetchCandidatesForLegs(profile, legs); } catch (e) { console.warn('[candidates] fetch failed, falling back to free-form', e); }
+    if (candidates) {
+      const emptySubAreas = legs.filter(l => {
+        const bk = candidates[l.subArea];
+        return !bk || Object.values(bk).every(arr => !arr?.length);
+      }).map(l => l.subArea);
+      if (emptySubAreas.length) console.warn('[candidates] empty/sparse result for sub-areas:', emptySubAreas);
+    }
     state.candidates = candidates || null;
     const menu = formatCandidatesMenu(candidates);
 
