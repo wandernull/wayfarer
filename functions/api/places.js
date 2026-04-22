@@ -29,19 +29,58 @@ export async function onRequestPost(context) {
     park: ['park'], museum: ['museum'], beach: ['park'],
   };
 
-  const results = await Promise.all(events.map(async (event) => {
-    try {
-      const { id, type, lat, lon } = event;
-      const typeKey = (type || '').toLowerCase().replace(/[\s_]+/g, '');
-      const includedTypes = typeMap[typeKey] || ['point_of_interest'];
-      if (!lat || !lon || isNaN(parseFloat(lat)) || isNaN(parseFloat(lon))) return { id, skip: true };
+  const FIELD_MASK = 'places.displayName,places.formattedAddress,places.rating,places.location,places.googleMapsUri,places.userRatingCount,places.businessStatus';
 
+  const STOP_WORDS = new Set(['the', 'a', 'an', 'and', 'of', 'de', 'la', 'le', 'el',
+    'restaurant', 'restaurante', 'ristorante', 'hotel', 'bar', 'cafe', 'café', 'club',
+    'gym', 'museum', 'park', 'house', 'room', 'kitchen', 'grill', 'bistro']);
+
+  const normalize = (s) => (s || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+
+  const significantWords = (s) => normalize(s).split(' ').filter(w => w.length > 2 && !STOP_WORDS.has(w));
+
+  const nameLooksLikeMatch = (claudeName, googleName) => {
+    const claudeWords = significantWords(claudeName);
+    const googleWords = new Set(significantWords(googleName));
+    if (!claudeWords.length || !googleWords.size) return false;
+    const overlap = claudeWords.filter(w => googleWords.has(w)).length;
+    return overlap >= 1;
+  };
+
+  const textSearch = async (query, lat, lon) => {
+    try {
+      const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_API_KEY,
+          'X-Goog-FieldMask': FIELD_MASK
+        },
+        body: JSON.stringify({
+          textQuery: query,
+          locationBias: {
+            circle: {
+              center: { latitude: parseFloat(lat), longitude: parseFloat(lon) },
+              radius: 20000.0
+            }
+          },
+          maxResultCount: 5
+        })
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.places || []).filter(p => p.displayName?.text && p.location);
+    } catch { return []; }
+  };
+
+  const nearbySearch = async (includedTypes, lat, lon) => {
+    try {
       const res = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': GOOGLE_API_KEY,
-          'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.rating,places.location,places.googleMapsUri,places.userRatingCount'
+          'X-Goog-FieldMask': FIELD_MASK
         },
         body: JSON.stringify({
           includedTypes,
@@ -55,21 +94,47 @@ export async function onRequestPost(context) {
           rankPreference: 'RATING'
         })
       });
-
-      if (!res.ok) return { id, skip: true };
+      if (!res.ok) return [];
       const data = await res.json();
-      const places = (data.places || []).filter(p => p.displayName?.text && p.location);
-      if (!places.length) return { id, skip: true };
-      const top = places.sort((a, b) => (b.rating || 0) - (a.rating || 0))[0];
+      return (data.places || []).filter(p => p.displayName?.text && p.location);
+    } catch { return []; }
+  };
 
-      return {
-        id,
-        realName: top.displayName.text,
-        address: top.formattedAddress || null,
-        mapsUrl: top.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(top.displayName.text)}`,
-        rating: top.rating ? Math.round(top.rating * 10) / 10 : null,
-        ratingCount: top.userRatingCount || null
-      };
+  const formatResult = (id, place, { replaced = false, verified = false } = {}) => ({
+    id,
+    realName: place.displayName.text,
+    address: place.formattedAddress || null,
+    mapsUrl: place.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.displayName.text)}`,
+    rating: place.rating ? Math.round(place.rating * 10) / 10 : null,
+    ratingCount: place.userRatingCount || null,
+    verified,
+    replaced
+  });
+
+  const results = await Promise.all(events.map(async (event) => {
+    try {
+      const { id, title, city, type, lat, lon } = event;
+      const typeKey = (type || '').toLowerCase().replace(/[\s_]+/g, '');
+      const includedTypes = typeMap[typeKey] || ['point_of_interest'];
+      if (!lat || !lon || isNaN(parseFloat(lat)) || isNaN(parseFloat(lon))) return { id, skip: true };
+
+      // Step 1: verify Claude's named venue via Text Search.
+      if (title && title.trim()) {
+        const query = city ? `${title} ${city}` : title;
+        const textPlaces = await textSearch(query, lat, lon);
+        const verified = textPlaces.find(p =>
+          p.businessStatus === 'OPERATIONAL' &&
+          nameLooksLikeMatch(title, p.displayName.text)
+        );
+        if (verified) return formatResult(id, verified, { verified: true });
+      }
+
+      // Step 2: fall back to nearby-top-rated as a replacement.
+      const nearby = await nearbySearch(includedTypes, lat, lon);
+      const open = nearby.filter(p => p.businessStatus === 'OPERATIONAL' || !p.businessStatus);
+      if (!open.length) return { id, skip: true };
+      const top = open.sort((a, b) => (b.rating || 0) - (a.rating || 0))[0];
+      return formatResult(id, top, { replaced: true });
     } catch (e) {
       return { id: event.id, skip: true };
     }
