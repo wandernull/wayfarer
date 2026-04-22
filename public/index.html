@@ -28,6 +28,9 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .trip-route { display: flex; align-items: center; gap: 6px; }
 .route-city { background: var(--accent-light); color: var(--accent); padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; }
 .route-sep { color: var(--border); font-size: 14px; }
+.plan-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.plan-pill { background: #fff4e6; color: #a66400; padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; cursor: help; }
+.plan-pill .plan-parent { opacity: 0.65; font-weight: 500; }
 .btn-outline { padding: 8px 14px; border: 1.5px solid var(--border); border-radius: 8px; background: var(--surface); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: var(--text-primary); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 5px; }
 .btn-outline:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
 .btn-solid { padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
@@ -286,6 +289,7 @@ input::placeholder { color: var(--step-inactive); }
   </div>
   <div id="itinerary-header-extras">
     <div class="trip-route" id="header-route"></div>
+    <div class="plan-pills" id="header-plan-pills"></div>
   </div>
 </header>
 <div id="results-action-bar">
@@ -552,6 +556,128 @@ function buildSummary() {
   document.getElementById('summaryGrid').innerHTML = `<div class="summary-item"><div class="s-label">${u(t('sum_group'))}</div><div class="s-value">${groupStr}</div></div><div class="summary-item"><div class="s-label">${u(t('sum_duration'))}</div><div class="s-value">${totalNights} ${t('nights_unit')}</div></div><div class="summary-item"><div class="s-label">${u(t('sum_budget'))}</div><div class="s-value">${p.budget}</div></div><div class="summary-item"><div class="s-label">${u(t('sum_pace'))}</div><div class="s-value">${p.pace}</div></div><div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_vibe'))}</div><div class="s-value">${p.tripTypes.join(', ')||t('not_specified')}</div></div><div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_diet'))}</div><div class="s-value">${p.diet.join(', ')||t('no_restrictions')}</div></div>`;
 }
 const normalizeVenueName = s => (s || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
+const CANONICAL_THEMES = ['culture','history','art','food','nightlife','beach','nature','wellness','adventure','shopping','family','romantic','relaxation','active'];
+const THEME_SYNONYMS = {
+  culture: ['culture','cultural','heritage','temple','temples','tradition','traditional','museum','museums'],
+  history: ['history','historic','historical','ancient','ruins','archaeology','archaeological'],
+  art: ['art','arts','gallery','galleries','artist','artistic','design'],
+  food: ['food','foodie','culinary','cuisine','dining','eat','gastronomy','gastronomic','restaurant','restaurants'],
+  nightlife: ['nightlife','party','club','clubs','bar','bars','dance','dancing','disco','music'],
+  beach: ['beach','beaches','sea','ocean','swim','swimming','sunbathe','coast','coastal','seaside'],
+  nature: ['nature','natural','outdoor','outdoors','scenery','landscape','forest','mountain','mountains','lake'],
+  wellness: ['wellness','spa','yoga','meditation','retreat','calm','peaceful','detox','mindful','mindfulness'],
+  adventure: ['adventure','adventurous','thrill','thrilling','diving','surfing','surf','rafting','zipline','extreme'],
+  shopping: ['shopping','shop','shops','markets','market','boutique','boutiques','mall'],
+  family: ['family','kids','children','family-friendly','familyfriendly','kid-friendly'],
+  romantic: ['romantic','romance','couple','couples','honeymoon','anniversary'],
+  relaxation: ['relax','relaxing','relaxation','slow','quiet','laid-back','laidback','chill','chilled'],
+  active: ['active','sport','sports','sporty','hiking','hike','biking','cycling','running','fitness','gym','workout']
+};
+function normalizeToThemes(tags) {
+  const lowered = (tags || []).map(t => (t || '').toLowerCase());
+  const set = new Set();
+  for (const [theme, syns] of Object.entries(THEME_SYNONYMS)) {
+    for (const tag of lowered) {
+      if (syns.some(s => tag.includes(s))) { set.add(theme); break; }
+    }
+  }
+  return set;
+}
+function scoreOption(option, profile) {
+  const userThemes = normalizeToThemes([...(profile.interests||[]), ...(profile.tripTypes||[])]);
+  const optThemes = new Set((option.themes||[]).filter(t => CANONICAL_THEMES.includes(t)));
+  let score = 0;
+  for (const t of optThemes) if (userThemes.has(t)) score += 1;
+  const legs = option.plan?.length || 1;
+  const pace = (profile.pace || '').toLowerCase();
+  if (pace.includes('pack') && legs > 1) score += 0.5;
+  if ((pace.includes('laid') || pace.includes('slow')) && legs === 1) score += 0.5;
+  if ((profile.kids || 0) > 0) {
+    if (optThemes.has('nightlife')) score -= 1;
+    if (optThemes.has('adventure')) score -= 0.3;
+    if (optThemes.has('family')) score += 0.5;
+  }
+  return score;
+}
+function pickBestOption(options, profile) {
+  if (!options || !options.length) return null;
+  if (options.length === 1) return { option: options[0], score: 0 };
+  const scored = options.map(o => ({ option: o, score: scoreOption(o, profile) }));
+  scored.sort((a, b) => b.score - a.score);
+  return scored[0];
+}
+async function fetchPlanForCity(cityName, nights, profile, extras = {}) {
+  try {
+    const res = await fetch('/api/plan-destination', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        city: cityName,
+        nights,
+        interests: profile.interests || [],
+        tripTypes: profile.tripTypes || [],
+        pace: profile.pace,
+        budget: profile.budget,
+        accom: profile.accom,
+        kids: profile.kids || 0,
+        adults: profile.adults || 2,
+        diet: profile.diet || [],
+        arrivalTime: extras.arrivalTime || '',
+        arrivalAirport: extras.arrivalAirport || ''
+      })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.options || !data.options.length) return null;
+    return data;
+  } catch { return null; }
+}
+function buildLegs(profile, planByCity) {
+  const legs = [];
+  profile.cities.forEach((cityName, ci) => {
+    const cityPlan = planByCity?.[cityName];
+    const picked = cityPlan?.picked;
+    const userArrAirport = profile.airports?.[ci] || '';
+    const userArrTime = profile.arrivalTimes?.[ci] || '';
+    const userDepAirport = profile.cityData?.[ci]?.departureAirport || '';
+    const userDepTime = profile.cityData?.[ci]?.departureTime || '';
+    if (!picked?.plan?.length) {
+      legs.push({
+        parentCity: cityName,
+        subArea: cityName,
+        nights: profile.nights?.[ci] || 0,
+        arrivalAirport: userArrAirport,
+        arrivalTime: userArrTime,
+        departureAirport: userDepAirport,
+        departureTime: userDepTime
+      });
+      return;
+    }
+    picked.plan.forEach((p, pi) => {
+      const isFirst = pi === 0;
+      const isLast = pi === picked.plan.length - 1;
+      legs.push({
+        parentCity: cityName,
+        subArea: p.subArea,
+        nights: Number(p.nights) || 0,
+        arrivalAirport: isFirst ? userArrAirport : '',
+        arrivalTime: isFirst ? userArrTime : '',
+        departureAirport: isLast ? userDepAirport : '',
+        departureTime: isLast ? userDepTime : ''
+      });
+    });
+  });
+  return legs;
+}
+async function geocodeSubArea(subArea, parentCity) {
+  try {
+    const q = parentCity && parentCity !== subArea ? `${subArea}, ${parentCity}` : subArea;
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&limit=1&format=json`);
+    const data = await res.json();
+    if (data[0]) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+  } catch {}
+  return null;
+}
 async function resolveCityCoords(profile) {
   const out = [];
   for (let i = 0; i < profile.cities.length; i++) {
@@ -568,8 +694,8 @@ async function resolveCityCoords(profile) {
   }
   return out;
 }
-async function fetchCandidates(profile) {
-  const cities = await resolveCityCoords(profile);
+async function fetchCandidates(profile, explicitCities) {
+  const cities = explicitCities || (await resolveCityCoords(profile));
   const res = await fetch('/api/candidates', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -583,6 +709,29 @@ async function fetchCandidates(profile) {
   if (!res.ok) return null;
   const data = await res.json();
   return data.candidates || null;
+}
+async function fetchCandidatesForLegs(profile, legs) {
+  // Resolve coords per unique sub-area (parent-city-qualified geocode).
+  const uniqueSubAreas = new Map();
+  for (const leg of legs) {
+    const key = leg.subArea;
+    if (uniqueSubAreas.has(key)) continue;
+    let coords = null;
+    // Prefer user-typed city coords if subArea matches the parent city (single-base fallback).
+    if (leg.subArea === leg.parentCity) {
+      const ci = profile.cities.indexOf(leg.parentCity);
+      const lat = profile.lats?.[ci] || 0;
+      const lon = profile.lons?.[ci] || 0;
+      if (lat && lon) coords = { lat, lon };
+    }
+    if (!coords) coords = await geocodeSubArea(leg.subArea, leg.parentCity);
+    uniqueSubAreas.set(key, coords);
+  }
+  const citiesArg = [...uniqueSubAreas.entries()]
+    .filter(([_, c]) => c)
+    .map(([name, c]) => ({ name, lat: c.lat, lon: c.lon }));
+  if (!citiesArg.length) return null;
+  return fetchCandidates(profile, citiesArg);
 }
 function shortAddr(addr) {
   if (!addr) return '';
@@ -644,15 +793,43 @@ async function startGeneration() {
     si++; if (si >= 5) clearInterval(stepInterval);
   }, 900);
   try {
+    // 1. Plan per city (in parallel). Each city gets its own themed options; we score + pick.
+    const planByCity = {};
+    await Promise.all(profile.cities.map(async (cityName, ci) => {
+      const nights = profile.nights?.[ci] || 0;
+      const extras = {
+        arrivalTime: profile.arrivalTimes?.[ci] || '',
+        arrivalAirport: profile.airports?.[ci] || ''
+      };
+      const planResp = await fetchPlanForCity(cityName, nights, profile, extras);
+      if (!planResp || !planResp.options?.length) return;
+      const best = pickBestOption(planResp.options, profile);
+      if (!best) return;
+      planByCity[cityName] = {
+        hasDistinctSubAreas: !!planResp.hasDistinctSubAreas,
+        options: planResp.options,
+        picked: best.option,
+        pickedScore: best.score
+      };
+      console.debug('[plan]', cityName, 'picked:', best.option.title, 'score:', best.score, 'options:', planResp.options.map(o => `${o.title}(${(o.themes||[]).join('+')})`).join(' | '));
+    }));
+    state.plan = { byCity: planByCity };
+
+    // 2. Build legs from plans (sub-areas as trip legs). Fallback: one leg = user's city.
+    const legs = buildLegs(profile, planByCity);
+
+    // 3. Fetch candidates per sub-area in parallel, at tight radius.
     let candidates = null;
-    try { candidates = await fetchCandidates(profile); } catch (e) { console.warn('Candidates fetch failed, falling back to free-form', e); }
+    try { candidates = await fetchCandidatesForLegs(profile, legs); } catch (e) { console.warn('Candidates fetch failed, falling back to free-form', e); }
     state.candidates = candidates || null;
     const menu = formatCandidatesMenu(candidates);
-    const itinerary = await callClaude(profile, null, menu);
+
+    // 4. Call itinerary Claude with legs + menu.
+    const itinerary = await callClaude(profile, null, menu, legs);
     clearInterval(stepInterval);
     for (let i = 0; i < 5; i++) { const el = document.getElementById(`ls-${i}`); el?.classList.remove('active'); el?.classList.add('done'); }
     await new Promise(r => setTimeout(r, 500));
-    state.tripData = { profile, itinerary, candidates };
+    state.tripData = { profile, itinerary, candidates, planByCity, legs };
     showItinerary(profile, itinerary);
     enrichPlaces(profile, itinerary);
   } catch (err) {
@@ -664,24 +841,29 @@ async function startGeneration() {
     goTo(4); alert(t('alert_error') + err.message);
   }
 }
-async function callClaude(profile, customPrompt, candidatesMenu) {
-  const src = profile.cityData || profile.cities.map((c,i) => ({ city: c, nights: profile.nights[i], arrivalAirport: profile.airports?.[i]||'', arrivalTime: profile.arrivalTimes?.[i]||'', departureAirport: '', departureTime: '' }));
-  const cityList = src.map(d => {
+async function callClaude(profile, customPrompt, candidatesMenu, legs) {
+  const src = (legs && legs.length)
+    ? legs.map(l => ({ city: l.subArea, parentCity: l.parentCity, nights: l.nights, arrivalAirport: l.arrivalAirport, arrivalTime: l.arrivalTime, departureAirport: l.departureAirport, departureTime: l.departureTime }))
+    : (profile.cityData || profile.cities.map((c,i) => ({ city: c, parentCity: c, nights: profile.nights[i], arrivalAirport: profile.airports?.[i]||'', arrivalTime: profile.arrivalTimes?.[i]||'', departureAirport: '', departureTime: '' })));
+  const cityList = src.map((d, i) => {
+    const parent = d.parentCity && d.parentCity !== d.city ? ` (sub-area of ${d.parentCity})` : '';
     const airp = d.arrivalAirport ? ` via ${d.arrivalAirport}` : '';
     const arr = d.arrivalTime ? `, arrives at ${d.arrivalTime}` : '';
+    const prevLeg = i > 0 ? src[i-1] : null;
+    const groundTransfer = (prevLeg && !d.arrivalAirport && !d.arrivalTime) ? `, arrives by ground transfer from ${prevLeg.city}` : '';
     const hasDepAirport = !!d.departureAirport;
     const latestEnd = d.departureTime ? calcLatestEndTime(d.departureTime, hasDepAirport) : null;
     const depAirp = d.departureAirport ? ` via ${d.departureAirport}` : '';
     const dep = d.departureTime
       ? (hasDepAirport
         ? `, departure flight at ${d.departureTime}${depAirp} — allow 45min travel to airport + 3h airport check-in, last activity must end by ${latestEnd}`
-        : `, departing city at ${d.departureTime} by other means — last activity must end by ${latestEnd}`)
+        : `, departing at ${d.departureTime} by other means — last activity must end by ${latestEnd}`)
       : '';
-    return `${d.city} (${d.nights} nights${airp}${arr}${dep})`;
+    return `${d.city}${parent} (${d.nights} nights${airp}${arr}${groundTransfer}${dep})`;
   }).join(', ');
   const langInstruction = currentLang !== 'en' ? ` Respond entirely in ${langNames[currentLang]} language.` : '';
   const menuBlock = candidatesMenu ? `\n${candidatesMenu}\n` : '';
-  const prompt = (customPrompt || `You are an expert travel planner. Create a detailed hour-by-hour travel itinerary.${menuBlock}\nTRIP: ${cityList} | Start: ${profile.startDate||'unspecified'}\nGROUP: ${profile.adults} adults, ${profile.kids} children\nVIBE: ${profile.tripTypes.join(', ')||'general'} | PACE: ${profile.pace} | BUDGET: ${profile.budget} | STAY: ${profile.accom}\nDIET: ${profile.diet.join(', ')||'none'} | INTERESTS: ${profile.interests.join(', ')||'general'}\nACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | INDOOR BACKUP: ${profile.indoorAlt}\nEach city in the trip may include an airport code and landing time (e.g. "Paris via CDG, lands at 14:00"). Three cases for day 1 of each city: (1) Airport + arrival time provided: open with an isTravel:true airport→hotel transport card using realistic transfer duration for that city/airport (e.g. CDG to Paris center ~40min, DPS to Ubud ~2hrs), then hotel check-in, then activities from that point. (2) No airport + arrival time provided: user arrived by ground (train/bus/car) — skip any airport card, start day 1 with hotel check-in at the arrival time, then activities. (3) No airport + no arrival time: start day 1 at a reasonable morning time (e.g. 9:00 AM) with hotel check-in then activities. Include a hotel check-in event on day 1 of each city with a real hotel recommendation matching the budget and accommodation preference. ARRIVAL DAY ENERGY — HARD RULE: If arrival time is after 18:00, day 1 ends with transfer → hotel check-in → one casual dinner WITHIN WALKING DISTANCE of the hotel (same street or immediate neighborhood — the dinner venue's address MUST contain the same town/neighborhood name as the hotel's address) → end of day. Do NOT schedule nightclubs, beach clubs, multi-hour tours, sunrise activities, or ANY car/taxi ride to a different sub-area on a late arrival day. If arrival is after 21:00, go straight from transfer → hotel check-in → end of day (skip dinner unless the hotel has on-site dining). Real travelers are tired and jet-lagged on arrival — reflect that. ARRIVAL FLOW — GOOD vs BAD EXAMPLE. BAD (never do this, even if the menu offers it): DPS landing 20:00 → Alaya Resort Ubud 21:30 → Mozaic Beach Club Seminyak at 22:45 (Ubud hotel + Seminyak dinner = 35 km / 90 minutes apart — forbidden; the hotel address contains "Ubud" and the restaurant address contains "Seminyak"). GOOD: DPS landing 20:00 → transfer → Alaya Resort Ubud check-in 21:30 → dinner at a walkable named restaurant whose address also contains "Ubud" at 22:00 → end of day. Do NOT include flight or transport cards between cities — only within-city travel segments. Departure rule: for each city, if a departure time is provided, plan the last day so all activities end with enough buffer — if a departure airport is also set, end activities at least 3 hours before the departure time (airport transfer + check-in); if no departure airport, end activities at least 1 hour before. Never schedule anything that would conflict with the departure window.\nReturn ONLY valid JSON (no markdown, no backticks):\n{"tripTitle":"evocative title","cities":[{"name":"City","country":"Country","nights":3,"dotColor":"#2D6A4F","days":[{"dayNumber":1,"date":"Mon Jun 10","title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"9:00 AM","type":"sight","tag":"Sightseeing","name":"Name","desc":"One sentence description","details":["📍 Full address","⏱ ~2 hrs","🎟 €15 – book online","📅 Book in advance"],"isTravel":false},{"time":"11:00 AM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)","travelDuration":"22 min","isTravel":true},{"time":"1:00 PM","type":"meal","tag":"Lunch","name":"Restaurant Name","desc":"One sentence description","details":["📍 Full address","⏱ ~1.5 hrs","💶 ~€35/person","📅 Reserve 2 days ahead"],"isTravel":false},{"time":"8:00 PM","type":"hotel","tag":"Hotel","name":"Hotel Name","desc":"One sentence description","details":["📍 Full address","🏨 ~€120/night","🛎 Early check-in available"],"isTravel":false}],"tips":["tip1","tip2","tip3"]}]}]}\nDetails rules: Hotels→["📍 address","🏨 ~€X/night","🛎 check-in note"]; Restaurants→["📍 address","⏱ ~1.5 hrs","💶 ~€X/person","📅 reservation note"]; Sights→["📍 address","⏱ ~X hrs","🎟 ticket info","📅 booking note"]; Travel cards→travelDesc must include full route with line names/stops and cost e.g. "Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)".\nRules: max 6 events per day, full day 8am-10pm, travel segments between every activity, type=sight/meal/travel/hotel/end, distinct dotColor per city. GEOGRAPHIC COHERENCE — HARD RULE (most important rule): Pick ONE base neighborhood or sub-area per day and keep every event of that day within ~20 minutes of it by local transport. Never mix distant sub-areas in a single day. Sub-areas that must NOT be mixed same-day: Bali (Ubud / Seminyak / Canggu / Kuta / Uluwatu — each 30–90 min apart), Oahu (Waikiki / North Shore / Kailua), Tokyo (Shibuya / Asakusa / Shinjuku — one per day), Istanbul (Sultanahmet / Beyoğlu / Kadıköy), Phuket (Patong / Phuket Town / Kata), LA (Santa Monica / Hollywood / Downtown / Venice), London (Shoreditch / Soho / Notting Hill — pick one per night-out), Paris (Marais / Montmartre / Saint-Germain). If the hotel is in area X, every dinner, bar, sight, gym, and activity that day must also be in area X or directly adjacent. To shift base area, do it on a new day — never mid-day. ADDRESS COHERENCE — HARD RULE (enforce by reading addresses from the AVAILABLE VENUES list): The hotel you pick for each city anchors the "base area" for every day of that city stay. EVERY restaurant, cafe, bar, sight, museum, gym, and park for that city MUST have an address that contains the same town/neighborhood name as the hotel's address. For example, if the hotel address contains "Ubud", every meal and activity must also have "Ubud" in its address — NEVER pick a venue whose address says "Seminyak", "Canggu", "Kuta", or "Denpasar" EVEN IF it is listed in the menu. Sub-areas of island/region destinations (Bali: Ubud/Seminyak/Canggu/Kuta/Uluwatu/Jimbaran/Sanur; Oahu: Waikiki/North Shore/Kailua; Phuket: Patong/Phuket Town/Kata; Tokyo: Shibuya/Asakusa/Shinjuku; Istanbul: Sultanahmet/Beyoğlu/Kadıköy) are DISTINCT and MUST NOT be mixed in a single city stay. If the menu lacks a needed category in your chosen sub-area, skip that event rather than cross sub-areas. VENUE NAMING — HARD RULE: If an AVAILABLE VENUES list was provided above, every hotel, restaurant, cafe, bar, sight, museum, gym, and park/beach event's "name" field MUST exactly match a name from that list (copy the name verbatim, same spelling and punctuation). Do NOT invent or substitute venues. If a needed category is empty in the list, use the closest listed category (e.g. use a Restaurant for breakfast if Cafes is empty). If NO list was provided, every restaurant, bar, hotel, gym, and attraction must still be a SPECIFIC NAMED PLACE (e.g. "İskele Marin Restaurant", "Develi Karaköy", "Gold's Gym") — never descriptions like "local köfte house" or "a seafood restaurant by the harbour". Sights and parks may use their official name. Every day must include a dinner event (type=meal, tag=Dinner) around 19:00–20:00 — never skip dinner. If nightlife is listed in interests, include 1-2 nightlife events after dinner (bars, clubs, dancing, live music — type=sight, tag=Nightlife) starting around 21:30–22:00 on most days; the flow should be: ...afternoon activity → dinner (~19:30) → nightlife venue (~21:30). If 'active' or 'sport' appears in interests, suggest a specific named fitness venue (gym, yoga studio, fitness center, swimming pool, sports club, or climbing gym) as a standalone event with realistic timing (e.g. morning workout 7:00–8:30 AM).${profile.notes ? `\nAdditional notes from the traveller: ${profile.notes}` : ''}`) + langInstruction;
+  const prompt = (customPrompt || `You are an expert travel planner. Create a detailed hour-by-hour travel itinerary.${menuBlock}\nTRIP: ${cityList} | Start: ${profile.startDate||'unspecified'}\nGROUP: ${profile.adults} adults, ${profile.kids} children\nVIBE: ${profile.tripTypes.join(', ')||'general'} | PACE: ${profile.pace} | BUDGET: ${profile.budget} | STAY: ${profile.accom}\nDIET: ${profile.diet.join(', ')||'none'} | INTERESTS: ${profile.interests.join(', ')||'general'}\nACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | INDOOR BACKUP: ${profile.indoorAlt}\nSTRUCTURE — HARD RULE: Each trip leg above corresponds to ONE sub-area home base. Your returned JSON's "cities" array MUST contain one entry per leg, in the same order, with city.name set to the EXACT sub-area name (e.g. "Ubud", "Seminyak" — NOT the parent region like "Bali"). Set city.country to the actual country. Each city's days MUST use ONLY that sub-area's menu block under AVAILABLE VENUES — never pull a venue listed under a different sub-area. The menu IS the geographic bound; coherence is guaranteed by restricting to one menu per city. Day-1 cases: (1) Airport + arrival time: open with isTravel:true airport→hotel transport (realistic duration — CDG→Paris ~40min, DPS→Ubud ~2hrs). (2) Ground transfer from previous leg: open with isTravel:true ground transfer card (car/shuttle, realistic duration between sub-areas e.g. Ubud→Seminyak ~90min) → hotel check-in → activities. (3) No airport + no arrival time (first leg of trip): start day 1 around 9:00 AM with hotel check-in then activities. Include a hotel check-in event on day 1 of each city picked from THAT sub-area's lodging list. ARRIVAL DAY ENERGY — HARD RULE: If arrival time is after 18:00, day 1 ends with transfer → hotel check-in → one casual dinner WITHIN WALKING DISTANCE of the hotel (same street or immediate neighborhood — the dinner venue's address MUST contain the same town/neighborhood name as the hotel's address) → end of day. Do NOT schedule nightclubs, beach clubs, multi-hour tours, sunrise activities, or ANY car/taxi ride to a different sub-area on a late arrival day. If arrival is after 21:00, go straight from transfer → hotel check-in → end of day (skip dinner unless the hotel has on-site dining). Real travelers are tired and jet-lagged on arrival — reflect that. ARRIVAL FLOW — GOOD vs BAD EXAMPLE. BAD (never do this, even if the menu offers it): DPS landing 20:00 → Alaya Resort Ubud 21:30 → Mozaic Beach Club Seminyak at 22:45 (Ubud hotel + Seminyak dinner = 35 km / 90 minutes apart — forbidden; the hotel address contains "Ubud" and the restaurant address contains "Seminyak"). GOOD: DPS landing 20:00 → transfer → Alaya Resort Ubud check-in 21:30 → dinner at a walkable named restaurant whose address also contains "Ubud" at 22:00 → end of day. Do NOT include flight or transport cards between cities — only within-city travel segments. Departure rule: for each city, if a departure time is provided, plan the last day so all activities end with enough buffer — if a departure airport is also set, end activities at least 3 hours before the departure time (airport transfer + check-in); if no departure airport, end activities at least 1 hour before. Never schedule anything that would conflict with the departure window.\nReturn ONLY valid JSON (no markdown, no backticks):\n{"tripTitle":"evocative title","cities":[{"name":"City","country":"Country","nights":3,"dotColor":"#2D6A4F","days":[{"dayNumber":1,"date":"Mon Jun 10","title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"9:00 AM","type":"sight","tag":"Sightseeing","name":"Name","desc":"One sentence description","details":["📍 Full address","⏱ ~2 hrs","🎟 €15 – book online","📅 Book in advance"],"isTravel":false},{"time":"11:00 AM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)","travelDuration":"22 min","isTravel":true},{"time":"1:00 PM","type":"meal","tag":"Lunch","name":"Restaurant Name","desc":"One sentence description","details":["📍 Full address","⏱ ~1.5 hrs","💶 ~€35/person","📅 Reserve 2 days ahead"],"isTravel":false},{"time":"8:00 PM","type":"hotel","tag":"Hotel","name":"Hotel Name","desc":"One sentence description","details":["📍 Full address","🏨 ~€120/night","🛎 Early check-in available"],"isTravel":false}],"tips":["tip1","tip2","tip3"]}]}]}\nDetails rules: Hotels→["📍 address","🏨 ~€X/night","🛎 check-in note"]; Restaurants→["📍 address","⏱ ~1.5 hrs","💶 ~€X/person","📅 reservation note"]; Sights→["📍 address","⏱ ~X hrs","🎟 ticket info","📅 booking note"]; Travel cards→travelDesc must include full route with line names/stops and cost e.g. "Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)".\nRules: max 6 events per day, full day 8am-10pm, travel segments between every activity, type=sight/meal/travel/hotel/end, distinct dotColor per city. SUB-AREA MENU LOCK — HARD RULE: Each city in the returned JSON is bound to ONE sub-area; all of that city's days MUST use ONLY that sub-area's menu block. Never reference a venue that appears in a different sub-area's menu. If the assigned sub-area's menu lacks a needed category, skip that event rather than crossing into another sub-area's menu. VENUE NAMING — HARD RULE: If an AVAILABLE VENUES list was provided above, every hotel, restaurant, cafe, bar, sight, museum, gym, and park/beach event's "name" field MUST exactly match a name from that list (copy the name verbatim, same spelling and punctuation). Do NOT invent or substitute venues. If a needed category is empty in the list, use the closest listed category (e.g. use a Restaurant for breakfast if Cafes is empty). If NO list was provided, every restaurant, bar, hotel, gym, and attraction must still be a SPECIFIC NAMED PLACE (e.g. "İskele Marin Restaurant", "Develi Karaköy", "Gold's Gym") — never descriptions like "local köfte house" or "a seafood restaurant by the harbour". Sights and parks may use their official name. Every day must include a dinner event (type=meal, tag=Dinner) around 19:00–20:00 — never skip dinner. If nightlife is listed in interests, include 1-2 nightlife events after dinner (bars, clubs, dancing, live music — type=sight, tag=Nightlife) starting around 21:30–22:00 on most days; the flow should be: ...afternoon activity → dinner (~19:30) → nightlife venue (~21:30). If 'active' or 'sport' appears in interests, suggest a specific named fitness venue (gym, yoga studio, fitness center, swimming pool, sports club, or climbing gym) as a standalone event with realistic timing (e.g. morning workout 7:00–8:30 AM).${profile.notes ? `\nAdditional notes from the traveller: ${profile.notes}` : ''}`) + langInstruction;
   const response = await fetch('/api/itinerary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
   if (!response.ok) throw new Error(`Server error: ${response.status}`);
   const reader = response.body.getReader();
@@ -733,6 +915,15 @@ function showItinerary(profile, itinerary) {
   document.getElementById('results-action-bar').style.display = 'flex';
   document.getElementById('lang-switcher').style.display = 'none';
   document.getElementById('header-route').innerHTML = itinerary.cities.map((c,i) => `${i>0?'<span class="route-sep">→</span>':''}<span class="route-city">${c.name}</span>`).join('');
+  const pillsEl = document.getElementById('header-plan-pills');
+  if (pillsEl) {
+    const entries = Object.entries(state.plan?.byCity || {}).filter(([_, d]) => d?.picked?.title);
+    pillsEl.innerHTML = entries.map(([cityName, d]) => {
+      const tagline = (d.picked.tagline || '').replace(/"/g, '&quot;');
+      const parent = entries.length > 1 ? `<span class="plan-parent">${cityName}:</span>` : '';
+      return `<div class="plan-pill" title="${tagline}">🎯 ${parent}${d.picked.title}</div>`;
+    }).join('');
+  }
   let sbHtml = `<span class="sb-label">${u(t('sb_itinerary'))}</span>`;
   let dayCounter = 0;
   itinerary.cities.forEach(city => {
