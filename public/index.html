@@ -824,15 +824,37 @@ async function startGeneration() {
       };
       const planResp = await fetchPlanForCity(cityName, nights, profile, extras);
       if (!planResp || !planResp.options?.length) return;
-      const best = pickBestOption(planResp.options, profile);
+      const ranked = planResp.options
+        .map(o => ({ option: o, score: scoreOption(o, profile) }))
+        .sort((a, b) => b.score - a.score);
+      const best = ranked[0];
       if (!best) return;
       planByCity[cityName] = {
         hasDistinctSubAreas: !!planResp.hasDistinctSubAreas,
         options: planResp.options,
+        ranked,
         picked: best.option,
         pickedScore: best.score
       };
-      console.debug('[plan]', cityName, 'picked:', best.option.title, 'score:', best.score, 'options:', planResp.options.map(o => `${o.title}(${(o.themes||[]).join('+')})`).join(' | '));
+      const rows = ranked.map(({ option, score }) => ({
+        picked: option === best.option ? '✓' : '',
+        title: option.title,
+        score: score.toFixed(2),
+        themes: (option.themes || []).join(', '),
+        plan: (option.plan || []).map(p => `${p.subArea}(${p.nights}n)`).join(' → ')
+      }));
+      console.group(`[plan] ${cityName} — picked "${best.option.title}" (score ${best.score.toFixed(2)})`);
+      console.table(rows);
+      console.groupCollapsed('rationales');
+      ranked.forEach(({ option }) => {
+        const tag = option === best.option ? ' ✓ PICKED' : '';
+        console.log(`${option.id}${tag}:`);
+        (option.plan || []).forEach(p => {
+          console.log(`  • ${p.subArea} (${p.nights}n) — ${p.rationale || '(no rationale)'}`);
+        });
+      });
+      console.groupEnd();
+      console.groupEnd();
     }));
     state.plan = { byCity: planByCity };
 
