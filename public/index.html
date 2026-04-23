@@ -704,6 +704,7 @@ async function fetchPlanForCity(cityName, nights, profile, extras = {}) {
         localOnly: !!profile.localOnly,
         indoorAlt: !!profile.indoorAlt,
         notes: notesCapped,
+        flightsBooked: profile.flightsBooked,
         arrivalTime: extras.arrivalTime || '',
         arrivalAirport: extras.arrivalAirport || '',
         departureTime: extras.departureTime || '',
@@ -898,6 +899,18 @@ async function startGeneration() {
       };
       const planResp = await fetchPlanForCity(cityName, nights, profile, extras);
       if (!planResp || !planResp.options?.length) return;
+      // If user hasn't booked flights, write the planner's suggested IATA codes
+      // back into the profile so downstream legs/candidates/itinerary use them.
+      if (profile.flightsBooked === false) {
+        if (planResp.suggestedArrivalAirport) {
+          profile.airports[ci] = planResp.suggestedArrivalAirport;
+          if (profile.cityData?.[ci]) profile.cityData[ci].arrivalAirport = planResp.suggestedArrivalAirport;
+        }
+        if (planResp.suggestedDepartureAirport && profile.cityData?.[ci]) {
+          profile.cityData[ci].departureAirport = planResp.suggestedDepartureAirport;
+        }
+        console.debug(`[plan] ${cityName} suggested airports — arrival: ${planResp.suggestedArrivalAirport || '—'}, departure: ${planResp.suggestedDepartureAirport || '—'}`);
+      }
       const ranked = planResp.options
         .map(o => ({ option: o, score: scoreOption(o, profile) }))
         .sort((a, b) => b.score - a.score);

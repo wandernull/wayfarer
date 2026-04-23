@@ -32,7 +32,8 @@ export async function onRequestPost(context) {
     arrivalTime = '',
     arrivalAirport = '',
     departureTime = '',
-    departureAirport = ''
+    departureAirport = '',
+    flightsBooked = null
   } = body;
 
   if (!city || !nights) {
@@ -74,6 +75,7 @@ DIET: ${diet.join(', ') || 'none'}
 ACCESSIBILITY NEEDED: ${accessibility ? 'true' : 'false'}
 LOCAL / OFF-TOURIST PREFERRED: ${localOnly ? 'true' : 'false'}
 INDOOR BACKUP NEEDED: ${indoorAlt ? 'true' : 'false'}
+FLIGHTS BOOKED: ${flightsBooked === false ? 'false (user has no airport yet — resolve nearest major IATA airport for them)' : flightsBooked === true ? 'true' : 'unknown'}
 ${notesLine}
 
 Analyze this destination and return options as strict JSON.`;
@@ -151,6 +153,21 @@ Read every field of the user profile. Signals and how to use them:
    sub-area is notably strong or weak for the diet.
 9. BUDGET + STAY shape which sub-areas make sense (filter luxury-only
    sub-areas out for budget travelers; hostel-heavy ones out for luxury).
+10. FLIGHTS BOOKED = false → the user has NOT booked flights yet and
+    provided only approximate arrival/departure times (no airport codes).
+    You MUST resolve the nearest major commercial IATA airport for them
+    and return it in the response:
+    - If arrivalTime is set → include "suggestedArrivalAirport": "XXX"
+      in the top-level JSON (IATA 3-letter code).
+    - If departureTime is set → include "suggestedDepartureAirport": "XXX".
+    Pick the airport travelers most commonly use for that destination
+    (Bali → DPS; Paris → CDG by default over ORY; Tokyo → NRT or HND,
+    prefer HND for domestic ease; NYC → JFK over LGA/EWR by default;
+    Istanbul → IST over SAW; Rome → FCO over CIA). For multi-city trips
+    planned per-city, return the airport most relevant for that city's
+    arrival/departure leg.
+    If FLIGHTS BOOKED = true or unknown, OMIT both suggestedArrivalAirport
+    and suggestedDepartureAirport from the response.
 
 ────── SUB-AREA GROUPING ──────
 Decide whether the destination has GENUINELY DISTINCT sub-areas (town-scale
@@ -215,6 +232,8 @@ Output schema — return EXACTLY this shape, no extra fields:
 {
   "destination": "<city>",
   "hasDistinctSubAreas": true | false,
+  "suggestedArrivalAirport": "DPS",     // INCLUDE ONLY when FLIGHTS BOOKED = false AND arrivalTime is set (IATA 3-letter)
+  "suggestedDepartureAirport": "DPS",   // INCLUDE ONLY when FLIGHTS BOOKED = false AND departureTime is set
   "options": [
     {
       "id": "kebab-case-slug",
@@ -240,7 +259,10 @@ Before returning, verify for each option:
 - if notes excluded specific sub-areas, they do NOT appear;
 - if notes explicitly overrode a default rule, that rule was not silently
   re-enforced;
-- the rationale cites something concrete from the profile.`;
+- the rationale cites something concrete from the profile;
+- if FLIGHTS BOOKED = false, suggestedArrivalAirport and/or
+  suggestedDepartureAirport are present in the top-level JSON as IATA
+  codes when the respective times are set.`;
 
   const upstream = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -297,6 +319,8 @@ Before returning, verify for each option:
   return new Response(JSON.stringify({
     destination: parsed.destination || city,
     hasDistinctSubAreas: !!parsed.hasDistinctSubAreas,
+    suggestedArrivalAirport: parsed.suggestedArrivalAirport || null,
+    suggestedDepartureAirport: parsed.suggestedDepartureAirport || null,
     options: validOptions
   }), {
     headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
