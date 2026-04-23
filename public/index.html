@@ -53,23 +53,19 @@ input::placeholder { color: var(--step-inactive); }
 .chip.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
 .chip-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 9px; }
 .city-list { display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px; }
-.city-row { display: flex; align-items: flex-start; gap: 9px; }
-.city-primary { flex: 2; min-width: 0; }
-.city-primary-header { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 7px; }
-.city-secondary { flex: 1; min-width: 0; }
-.city-secondary-headers, .city-secondary-inputs { display: grid; grid-template-columns: 1fr 90px 68px 30px; gap: 9px; align-items: center; }
-.city-secondary-headers { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 7px; }
-.sh-lands, .sh-nights { text-align: center; }
-.city-secondary-inputs input { width: 100%; min-width: 0; }
-.city-secondary .airport-select { padding: 12px 6px; }
+.city-row { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; position: relative; }
+.city-row + .city-row { margin-top: 12px; }
+.city-row .remove-btn { position: absolute; top: 10px; right: 12px; height: 30px; width: 30px; border: none; background: none; color: var(--text-secondary); font-size: 20px; cursor: pointer; border-radius: 6px; transition: color 0.2s, background 0.2s; display: flex; align-items: center; justify-content: center; z-index: 2; }
+.city-row .remove-btn:hover { color: var(--danger, #c0392b); background: #fdf2f2; }
+.city-row-field { margin-bottom: 14px; padding-right: 36px; }
+.city-row-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); text-transform: uppercase; display: block; margin-bottom: 6px; }
+.city-flight-grid { display: grid; grid-template-columns: 1fr 1fr 100px; gap: 14px; align-items: end; }
+.flight-block-inputs { display: grid; grid-template-columns: 1fr 100px; gap: 8px; }
+.flight-block-inputs .airport-select,
+.flight-block-inputs input[type="time"] { width: 100%; min-width: 0; padding: 12px 10px; }
+.flight-block-inputs input[type="time"] { text-align: center; }
+.nights-block input[type="number"] { width: 100%; padding: 12px; text-align: center; }
 .airport-select:disabled { opacity: 0.5; cursor: not-allowed; }
-.city-secondary .arrival-input { padding: 12px 6px; text-align: center; }
-.city-secondary .nights-input { text-align: center; }
-.city-row .remove-btn { height: 30px; width: 30px; border: none; background: none; color: var(--step-inactive); font-size: 20px; cursor: pointer; border-radius: 6px; transition: color 0.2s, background 0.2s; display: flex; align-items: center; justify-content: center; }
-.city-row .remove-btn:hover { color: var(--danger); background: #fdf2f2; }
-.city-departure-wrap { margin-top: 7px; padding-top: 7px; border-top: 1px dashed var(--border); }
-.city-departure-header { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 5px; }
-.city-departure-inputs { display: grid; grid-template-columns: 1fr 90px 68px 30px; gap: 9px; align-items: center; }
 .flights-gate { margin: 18px 0 12px; }
 .flights-gate-q { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
 .flights-gate-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -80,11 +76,8 @@ input::placeholder { color: var(--step-inactive); }
 .flights-choice-desc { font-size: 12px; color: var(--text-secondary); }
 .flights-mode-indicator { display: flex; align-items: center; justify-content: space-between; background: var(--accent-light); color: var(--accent); padding: 8px 14px; border-radius: 8px; margin: 12px 0; font-size: 13px; font-weight: 600; }
 .change-answer-btn { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 12px; font-weight: 600; text-decoration: underline; padding: 0; font-family: inherit; }
-#step-0.flights-mode-rough .city-secondary-headers,
-#step-0.flights-mode-rough .city-secondary-inputs,
-#step-0.flights-mode-rough .city-departure-inputs { grid-template-columns: 90px 68px 30px; }
-#step-0.flights-mode-rough .airport-select,
-#step-0.flights-mode-rough .sh-airport { display: none; }
+#step-0.flights-mode-rough .airport-select { display: none; }
+#step-0.flights-mode-rough .flight-block-inputs { grid-template-columns: 1fr; }
 .city-secondary .departure-input { padding: 12px 6px; text-align: center; }
 .add-city-btn { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--accent); background: none; border: 1.5px dashed var(--accent); border-radius: 10px; padding: 10px 18px; cursor: pointer; transition: background 0.18s; width: 100%; margin-bottom: 22px; }
 .add-city-btn:hover { background: var(--accent-light); }
@@ -238,16 +231,10 @@ input::placeholder { color: var(--step-inactive); }
 .ac-item:last-child { border-bottom: none; }
 .ac-item:hover, .ac-item.ac-active { background: var(--accent-light); color: var(--accent); }
 @media (max-width: 640px) {
-  .city-row { flex-direction: column; gap: 7px; }
-  .city-primary, .city-secondary { width: 100%; }
-  .city-secondary-headers, .city-secondary-inputs { grid-template-columns: 1fr 80px 52px 30px; gap: 7px; }
-  .city-secondary .arrival-input { padding: 12px 4px; }
-  .city-departure-inputs { grid-template-columns: 1fr 80px 52px 30px; gap: 7px; }
-  #step-0.flights-mode-rough .city-secondary-headers,
-  #step-0.flights-mode-rough .city-secondary-inputs,
-  #step-0.flights-mode-rough .city-departure-inputs { grid-template-columns: 80px 52px 30px; }
+  .city-row { padding: 14px 16px; }
+  .city-flight-grid { grid-template-columns: 1fr; gap: 10px; }
+  .flight-block-inputs { grid-template-columns: 1fr 90px; gap: 6px; }
   .flights-gate-choices { grid-template-columns: 1fr; }
-  .city-secondary .departure-input { padding: 12px 4px; }
 }
 
 #lang-switcher { width: auto; padding: 6px 10px; font-size: 13px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-primary); cursor: pointer; font-family: 'DM Sans', sans-serif; flex-shrink: 0; }
@@ -345,25 +332,29 @@ input::placeholder { color: var(--step-inactive); }
     </div>
     <div class="city-list" id="cityList" style="display:none;">
       <div class="city-row">
-        <div class="city-primary">
-          <div class="city-primary-header" data-i18n="city_country_header" data-i18n-upper>City, Country</div>
+        <button class="remove-btn" onclick="removeCity(this)" aria-label="Remove city">×</button>
+        <div class="city-row-field">
+          <span class="city-row-label" data-i18n="city_country_header">City, Country</span>
           <div class="autocomplete-wrap"><input type="text" placeholder="e.g. Paris, France" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder"/></div>
         </div>
-        <div class="city-secondary">
-          <div class="city-secondary-headers"><span class="sh-airport" data-i18n="airport_opt" data-i18n-upper>Airport (opt.)</span><span class="sh-lands" data-i18n="lands_header" data-i18n-upper>🛬 Lands</span><span class="sh-nights" data-i18n="nights_header" data-i18n-upper>Nights</span></div>
-          <div class="city-secondary-inputs">
-            <select class="airport-select arrival-airport-select" disabled><option value="" data-i18n="select_city_first">Select city first</option></select>
-            <input type="time" class="arrival-input"/>
-            <input type="number" min="1" max="30" value="3" class="nights-input"/>
-            <button class="remove-btn" onclick="removeCity(this)">×</button>
+        <div class="city-flight-grid">
+          <div class="arrival-block">
+            <span class="city-row-label sh-lands" data-i18n="lands_header">🛬 Arrival</span>
+            <div class="flight-block-inputs">
+              <select class="airport-select arrival-airport-select" disabled><option value="" data-i18n="select_city_first">Select city first</option></select>
+              <input type="time" class="arrival-input"/>
+            </div>
           </div>
-          <div class="city-departure-wrap">
-            <div class="city-departure-header" data-i18n="departs_header" data-i18n-upper>🛫 Departs</div>
-            <div class="city-departure-inputs">
+          <div class="departure-block">
+            <span class="city-row-label city-departure-header" data-i18n="departs_header">🛫 Departure</span>
+            <div class="flight-block-inputs">
               <select class="airport-select departure-airport-select" disabled><option value="" data-i18n="select_city_first">Select city first</option></select>
               <input type="time" class="departure-input"/>
-              <span></span><span></span>
             </div>
+          </div>
+          <div class="nights-block">
+            <span class="city-row-label" data-i18n="nights_header">Nights</span>
+            <input type="number" min="1" max="30" value="3" class="nights-input"/>
           </div>
         </div>
       </div>
@@ -526,7 +517,31 @@ function updateDots() {
 }
 function addCity() {
   const row = document.createElement('div'); row.className = 'city-row';
-  row.innerHTML = `<div class="city-primary"><div class="city-primary-header" data-i18n="city_country_header" data-i18n-upper>${u(t('city_country_header'))}</div><div class="autocomplete-wrap"><input type="text" placeholder="${t('city_placeholder_2')}" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder_2"/></div></div><div class="city-secondary"><div class="city-secondary-headers"><span class="sh-airport" data-i18n="airport_opt" data-i18n-upper>${u(t('airport_opt'))}</span><span class="sh-lands" data-i18n="lands_header" data-i18n-upper>${u(t('lands_header'))}</span><span class="sh-nights" data-i18n="nights_header" data-i18n-upper>${u(t('nights_header'))}</span></div><div class="city-secondary-inputs"><select class="airport-select arrival-airport-select" disabled><option value="" data-i18n="select_city_first">${t('select_city_first')}</option></select><input type="time" class="arrival-input"/><input type="number" min="1" max="30" value="3" class="nights-input"/><button class="remove-btn" onclick="removeCity(this)">×</button></div><div class="city-departure-wrap"><div class="city-departure-header" data-i18n="departs_header" data-i18n-upper>${u(t('departs_header'))}</div><div class="city-departure-inputs"><select class="airport-select departure-airport-select" disabled><option value="" data-i18n="select_city_first">${t('select_city_first')}</option></select><input type="time" class="departure-input"/><span></span><span></span></div></div></div>`;
+  row.innerHTML = `<button class="remove-btn" onclick="removeCity(this)" aria-label="Remove city">×</button>
+    <div class="city-row-field">
+      <span class="city-row-label" data-i18n="city_country_header">${t('city_country_header')}</span>
+      <div class="autocomplete-wrap"><input type="text" placeholder="${t('city_placeholder_2')}" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder_2"/></div>
+    </div>
+    <div class="city-flight-grid">
+      <div class="arrival-block">
+        <span class="city-row-label sh-lands" data-i18n="lands_header">🛬 Arrival</span>
+        <div class="flight-block-inputs">
+          <select class="airport-select arrival-airport-select" disabled><option value="" data-i18n="select_city_first">${t('select_city_first')}</option></select>
+          <input type="time" class="arrival-input"/>
+        </div>
+      </div>
+      <div class="departure-block">
+        <span class="city-row-label city-departure-header" data-i18n="departs_header">🛫 Departure</span>
+        <div class="flight-block-inputs">
+          <select class="airport-select departure-airport-select" disabled><option value="" data-i18n="select_city_first">${t('select_city_first')}</option></select>
+          <input type="time" class="departure-input"/>
+        </div>
+      </div>
+      <div class="nights-block">
+        <span class="city-row-label" data-i18n="nights_header">${t('nights_header')}</span>
+        <input type="number" min="1" max="30" value="3" class="nights-input"/>
+      </div>
+    </div>`;
   document.getElementById('cityList').appendChild(row);
   initAutocomplete(row.querySelector('.city-input'));
   updateFlightLabels();
@@ -535,8 +550,8 @@ function removeCity(btn) { if (document.querySelectorAll('.city-row').length > 1
 function updateFlightLabels() {
   if (state.flightsBooked === null) return;
   const booked = state.flightsBooked === true;
-  document.querySelectorAll('.sh-lands').forEach(el => el.textContent = booked ? '🛬 Lands' : '⏱ Est. arrival');
-  document.querySelectorAll('.city-departure-header').forEach(el => el.textContent = booked ? '🛫 Departs' : '⏱ Est. departure');
+  document.querySelectorAll('.sh-lands').forEach(el => el.textContent = booked ? '🛬 Arrival' : '⏱ Est. arrival');
+  document.querySelectorAll('.city-departure-header').forEach(el => el.textContent = booked ? '🛫 Departure' : '⏱ Est. departure');
 }
 function setFlightsMode(booked) {
   state.flightsBooked = !!booked;
