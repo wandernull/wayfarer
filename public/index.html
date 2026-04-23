@@ -672,31 +672,31 @@ function buildSummary() {
   }
 
   const flightsHtml = p.flightsBooked === true
-    ? `<span class="flights-pill booked">✈️ Booked</span>`
+    ? `<span class="flights-pill booked">${t('sum_flights_booked')}</span>`
     : p.flightsBooked === false
-      ? `<span class="flights-pill rough">🤷 Not booked · auto airports</span>`
+      ? `<span class="flights-pill rough">${t('sum_flights_rough')}</span>`
       : '—';
 
   const prefs = [];
-  if (p.accessibility) prefs.push('♿ Accessibility needed');
-  if (p.localOnly) prefs.push('🌿 Off-tourist');
-  if (p.indoorAlt) prefs.push('🌧 Indoor backup');
+  if (p.accessibility) prefs.push(`♿ ${t('access_title')}`);
+  if (p.localOnly) prefs.push(`🌿 ${t('avoid_traps_title')}`);
+  if (p.indoorAlt) prefs.push(`🌧 ${t('indoor_alt_title')}`);
   const prefsHtml = prefs.length
     ? prefs.map(s => `<span class="pref-pill">${s}</span>`).join('')
-    : `<span style="color:var(--text-secondary);font-size:13px;">None</span>`;
+    : `<span style="color:var(--text-secondary);font-size:13px;">${t('sum_prefs_none')}</span>`;
 
   document.getElementById('summaryGrid').innerHTML =
     `<div class="summary-item"><div class="s-label">${u(t('sum_group'))}</div><div class="s-value">${groupStr}</div></div>
     <div class="summary-item"><div class="s-label">${u(t('sum_duration'))}</div><div class="s-value">${totalNights} ${t('nights_unit')}</div></div>
-    <div class="summary-item"><div class="s-label">START DATE</div><div class="s-value">${startDateStr}</div></div>
-    <div class="summary-item"><div class="s-label">FLIGHTS</div><div class="s-value">${flightsHtml}</div></div>
+    <div class="summary-item"><div class="s-label">${u(t('start_date'))}</div><div class="s-value">${startDateStr}</div></div>
+    <div class="summary-item"><div class="s-label">${u(t('sum_flights'))}</div><div class="s-value">${flightsHtml}</div></div>
     <div class="summary-item"><div class="s-label">${u(t('sum_budget'))}</div><div class="s-value">${p.budget}</div></div>
     <div class="summary-item"><div class="s-label">${u(t('sum_pace'))}</div><div class="s-value">${p.pace}</div></div>
-    <div class="summary-item"><div class="s-label">STAY</div><div class="s-value">${p.accom || '—'}</div></div>
-    <div class="summary-item"><div class="s-label">INTERESTS</div><div class="s-value">${p.interests.join(', ')||t('not_specified')}</div></div>
+    <div class="summary-item"><div class="s-label">${u(t('sum_stay'))}</div><div class="s-value">${p.accom || '—'}</div></div>
+    <div class="summary-item"><div class="s-label">${u(t('sum_interests'))}</div><div class="s-value">${p.interests.join(', ')||t('not_specified')}</div></div>
     <div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_vibe'))}</div><div class="s-value">${p.tripTypes.join(', ')||t('not_specified')}</div></div>
     <div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_diet'))}</div><div class="s-value">${p.diet.join(', ')||t('no_restrictions')}</div></div>
-    <div class="summary-item" style="grid-column:1/-1"><div class="s-label">PREFERENCES</div><div class="s-value">${prefsHtml}</div></div>`;
+    <div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_preferences'))}</div><div class="s-value">${prefsHtml}</div></div>`;
 }
 const normalizeVenueName = s => (s || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
 const CANONICAL_THEMES = ['culture','history','art','food','nightlife','beach','nature','wellness','adventure','shopping','family','romantic','relaxation','active'];
