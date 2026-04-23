@@ -24,20 +24,46 @@ export async function onRequestPost(context) {
     kids = 0,
     adults = 2,
     diet = [],
+    startDate = '',
+    accessibility = false,
+    localOnly = false,
+    indoorAlt = false,
+    notes = '',
     arrivalTime = '',
-    arrivalAirport = ''
+    arrivalAirport = '',
+    departureTime = '',
+    departureAirport = ''
   } = body;
 
   if (!city || !nights) {
     return new Response(JSON.stringify({ error: 'city and nights are required' }), { status: 400 });
   }
 
+  // Derive month name from startDate (e.g. "2026-05-15" → "May")
+  let monthName = '';
+  if (startDate) {
+    const d = new Date(startDate);
+    if (!isNaN(d.getTime())) {
+      monthName = d.toLocaleString('en-US', { month: 'long' });
+    }
+  }
+
   const arrivalLine = arrivalTime
     ? `ARRIVAL: ${arrivalTime}${arrivalAirport ? ' via ' + arrivalAirport : ''}`
     : 'ARRIVAL: unspecified';
+  const departureLine = departureTime
+    ? `DEPARTURE: ${departureTime}${departureAirport ? ' via ' + departureAirport : ''}`
+    : 'DEPARTURE: unspecified';
+  const startLine = startDate
+    ? `START DATE: ${startDate}${monthName ? ` (month: ${monthName})` : ''}`
+    : 'START DATE: unspecified';
+  const notesLine = notes.trim() ? `NOTES: ${notes.trim()}` : 'NOTES: (none)';
 
   const userPrompt = `DESTINATION: ${city}
 TOTAL NIGHTS: ${nights}
+${startLine}
+${arrivalLine}
+${departureLine}
 GROUP: ${adults} adults${kids > 0 ? `, ${kids} kids` : ''}
 INTERESTS: ${interests.join(', ') || 'general'}
 VIBE: ${tripTypes.join(', ') || 'general'}
@@ -45,36 +71,115 @@ PACE: ${pace || 'Balanced'}
 BUDGET: ${budget || 'Mid-range'}
 STAY: ${accom || 'Hotel'}
 DIET: ${diet.join(', ') || 'none'}
-${arrivalLine}
+ACCESSIBILITY NEEDED: ${accessibility ? 'true' : 'false'}
+LOCAL / OFF-TOURIST PREFERRED: ${localOnly ? 'true' : 'false'}
+INDOOR BACKUP NEEDED: ${indoorAlt ? 'true' : 'false'}
+${notesLine}
 
 Analyze this destination and return options as strict JSON.`;
 
   const systemPrompt = `You are an expert travel planner who analyzes destinations and proposes trip bases.
 Return ONLY raw valid JSON. No markdown, no backticks, no explanation.
 
-For any destination + trip length, decide whether it has GENUINELY DISTINCT sub-areas (town-scale or neighborhood-scale) where travelers with different interests would want different home bases.
+──────────────── PROFILE AWARENESS ────────────────
+The user profile contains multiple signals. ALL of them shape your options.
+Do not ignore fields just because they aren't about sub-areas directly.
+
+1. INTERESTS + VIBE drive which themes are acceptable.
+2. NOTES (free text) can contain decisive context — occasions (honeymoon,
+   anniversary, first trip), constraints (scared of heights, stroller,
+   gluten-free), preferences (quiet mornings, sunset drinks). READ notes
+   carefully and let them override softer signals. Honeymoon or anniversary
+   always implies romantic. "Avoid touristy" strengthens the LOCAL-ONLY skew
+   even if that flag is off. Medical or phobic constraints are hard filters.
+3. START DATE → month → season. Monsoon-affected destinations (Bali Nov–Mar,
+   parts of SE Asia May–Oct, Caribbean Jun–Nov hurricane season) make beach/
+   outdoor sub-areas a worse pick. Ski towns in summer and beach towns in
+   winter are poor fits. Mention season in rationale when it drives a pick.
+4. ACCESSIBILITY NEEDED = true → prefer flat, walkable, paved sub-areas.
+   Avoid hill-heavy or stair-heavy ones (Ubud's rice terraces, Santorini's
+   stepped villages, Positano's cliffs) unless no alternative exists.
+5. LOCAL / OFF-TOURIST PREFERRED = true → favor residential, local-feeling
+   sub-areas. Avoid obvious tourist strips (Kuta, Patong, Khao San, Waikiki
+   main, La Rambla-adjacent) unless clearly the only reasonable pick.
+6. INDOOR BACKUP NEEDED = true → prefer sub-areas with good rain-day options
+   (museums, galleries, covered markets, indoor activities). Purely beach or
+   outdoor sub-areas are risky if this is true AND the season is unreliable.
+7. ARRIVAL TIME / AIRPORT → the FIRST sub-area must be reachable from the
+   airport without a brutal late-night haul.
+   - Arrival after 20:00 → first sub-area within ~1 hour ground transfer of
+     the airport, even if a better thematic fit exists further away.
+   - Arrival 14:00–20:00 → up to ~2 hours from airport is acceptable.
+   - Arrival before 14:00 → any sub-area is fair.
+8. DEPARTURE TIME / AIRPORT → the LAST sub-area must be reachable back to
+   the departure airport with comfortable buffer — mirror the arrival rule.
+9. DIET is not a sub-area driver on its own, but mention in rationale if a
+   sub-area is notably strong or weak for the diet.
+10. BUDGET + STAY shape which sub-areas make sense (filter luxury-only
+    sub-areas out for budget travelers, hostel-heavy ones out for luxury).
+
+──────────────── SUB-AREA GROUPING ────────────────
+Decide whether the destination has GENUINELY DISTINCT sub-areas (town-scale
+or neighborhood-scale) where travelers with different interests would want
+different home bases.
 
 Examples WITH distinct sub-areas:
-- Bali → Ubud (culture/yoga), Seminyak (beach/nightlife), Canggu (surf/hip), Uluwatu (cliffs/surf), Kuta (budget/beach), Jimbaran (seafood), Sanur (family-calm)
-- Oahu → Waikiki (tourist/beach), North Shore (surf/quiet), Kailua (windward/beach)
-- Tokyo → Shibuya, Asakusa, Shinjuku, Ginza (each walkable and distinct-flavored)
-- Istanbul → Sultanahmet (historic), Beyoğlu (modern/nightlife), Kadıköy (local/Asian side)
+- Bali → Ubud (culture/yoga), Seminyak (beach/nightlife), Canggu (surf/hip),
+  Uluwatu (cliffs/surf), Kuta (budget/beach), Jimbaran (seafood/sunset),
+  Sanur (family-calm/local), Nusa Dua (luxury-resort), Amed (quiet-dive),
+  Sidemen (quiet-mountain)
+- Oahu → Waikiki, North Shore, Kailua
+- Tokyo → Shibuya, Asakusa, Shinjuku, Ginza
+- Istanbul → Sultanahmet, Beyoğlu, Kadıköy
 - LA → Santa Monica, Venice, Hollywood, Downtown
 - Paris → Marais, Saint-Germain, Montmartre, Latin Quarter
-- Phuket → Patong (party), Phuket Town (culture), Kata (family-beach)
+- Phuket → Patong, Phuket Town, Kata
 - New York → Midtown/Lower Manhattan, Brooklyn, Williamsburg
 - Rome → Centro Storico, Trastevere, Monti
 
 Examples WITHOUT distinct sub-areas (single base works):
-- Small/medium walkable cities: Mersin, Antalya old town, Bologna, Lyon, Porto, Krakow, Ljubljana
-- Single-flavor compact destinations: Florence, Bruges, Venice, most European weekend cities
+- Small/medium walkable cities: Mersin, Antalya old town, Bologna, Lyon,
+  Porto, Krakow, Ljubljana
+- Single-flavor compact destinations: Florence, Bruges, Venice
 
-If distinct sub-areas exist, generate 2-3 DIFFERENTIATED options. Each option must commit to a distinct theme (culture, beach, nightlife, wellness, food, etc.) and pick 1-3 sub-areas consistent with that theme. Options must feel genuinely different — not permutations of the same flavor.
+──────────────── RELEVANCE FILTER — HARD RULE ────────────────
+EVERY option you return MUST respect the user's vibe, interests, and notes.
+DO NOT propose options that contradict them, even to create variety.
 
-If no distinct sub-areas exist, return exactly 1 option whose plan has the city itself as the single sub-area, and set hasDistinctSubAreas: false.
+Hard incompatibilities (never mix in a single option):
+- Vibe "romantic" or "relaxing"    → no nightlife- or party-dominant sub-areas
+- Vibe "nature" or "wellness"      → no shopping- or nightlife-dominant
+- Vibe "cultural"                  → no pure beach-party
+- Kids > 0                         → no nightlife, no adult-only resort
+                                     sub-areas
+- Notes mention "honeymoon",       → no party-centric options
+  "anniversary", "first trip"
+- LOCAL = true, or notes mention   → skip tourist-strip sub-areas (Kuta,
+  "avoid touristy" / "off the        Patong, Waikiki main, Khao San,
+  beaten path"                       La Rambla-adjacent, etc.)
+- ACCESSIBILITY = true             → skip hill-heavy sub-areas unless
+                                     explicitly the only option
+
+Differentiate options through DIFFERENT SUB-AREA CHOICES WITHIN THE SAME
+COMPATIBLE THEME FAMILY — not by spanning incompatible themes. For
+"romantic + nature + wellness" in Bali: Ubud (culture + rice paddies) vs.
+Sidemen (quiet mountain) vs. Amed (quiet coast) — all romantic/nature.
+NOT: Ubud (nature) vs. Seminyak (party).
+
+If only ONE theme family is compatible with the profile AND only one
+sensible sub-area exists within that family for this destination, return
+EXACTLY ONE option — do not invent fake variety.
+
+──────────────── OUTPUT ────────────────
+If distinct sub-areas exist and multiple are theme-compatible, generate 2-3
+DIFFERENTIATED options within the compatible territory. Otherwise, 1 option.
+
+If no distinct sub-areas exist, return exactly 1 option whose plan has the
+city itself as the single sub-area; set hasDistinctSubAreas: false.
 
 Canonical theme vocabulary (pick 1-3 per option ONLY from this list):
-culture, history, art, food, nightlife, beach, nature, wellness, adventure, shopping, family, romantic, relaxation, active
+culture, history, art, food, nightlife, beach, nature, wellness, adventure,
+shopping, family, romantic, relaxation, active
 
 Output schema — return EXACTLY this shape, no extra fields:
 {
@@ -85,24 +190,31 @@ Output schema — return EXACTLY this shape, no extra fields:
       "id": "kebab-case-slug",
       "title": "Short catchy title (3-4 words)",
       "tagline": "One-line description under 70 chars",
-      "themes": ["culture", "wellness"],
+      "themes": ["wellness", "romantic"],
       "plan": [
-        { "subArea": "Ubud", "nights": 2, "rationale": "One sentence on why this sub-area fits this theme and this user." }
+        {
+          "subArea": "Ubud",
+          "nights": 3,
+          "rationale": "One sentence — must explicitly reference something concrete from the user profile (interest, note phrase, season, arrival window, accessibility, diet, etc.)."
+        }
       ]
     }
   ]
 }
 
-Rules:
-- nights across sub-areas in each option MUST sum exactly to the requested total nights.
-- Sub-areas listed in sensible visit order (arrival proximity first, then pacing).
+──────────────── VALIDITY RULES ────────────────
+- nights across sub-areas in each option MUST sum exactly to the requested total.
+- Sub-areas listed in sensible visit order: arrival proximity first, departure
+  proximity last, best pacing in between.
+- First sub-area satisfies the ARRIVAL proximity rule above.
+- Last sub-area satisfies the DEPARTURE proximity rule above.
 - No duplicate sub-areas within one option's plan.
-- Minimum 2 nights per sub-area stay (don't split a 3-night trip into 3 single-night stays). Only exception: 2-night trips may split 1+1 if themes truly require it.
+- Minimum 2 nights per sub-area (exception: 2-night trips may split 1+1).
 - Trips of 1-2 nights → always exactly 1 sub-area per option.
-- Titles distinct across options; theme mixes distinct across options.
-- If kids > 0, avoid nightlife-dominant options; favor family-friendly sub-areas.
-- If arrival time is after 20:00 or airport is far from any candidate sub-area, make the first sub-area the one closest to the airport.
-- Rationale must be ONE sentence and explicitly reference something from the user profile (interests, pace, group, etc.).`;
+- Titles distinct across options.
+- Rationale must be ONE sentence and explicitly reference something concrete
+  from the user profile (an interest, a phrase from notes, the season, the
+  arrival window, accessibility, diet, etc.).`;
 
   const upstream = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -127,7 +239,6 @@ Rules:
   const data = await upstream.json();
   const text = data?.content?.[0]?.text || '';
 
-  // Robust JSON parse: raw → strip markdown fences → extract first {...} block.
   let parsed = null;
   try { parsed = JSON.parse(text.trim()); } catch {
     const stripped = text.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
@@ -144,7 +255,6 @@ Rules:
     });
   }
 
-  // Validate nights sum per option — drop malformed options.
   const validOptions = parsed.options.filter(opt => {
     if (!opt?.plan || !Array.isArray(opt.plan) || !opt.plan.length) return false;
     const sum = opt.plan.reduce((a, p) => a + (Number(p.nights) || 0), 0);

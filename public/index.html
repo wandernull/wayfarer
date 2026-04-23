@@ -607,6 +607,9 @@ function pickBestOption(options, profile) {
   return scored[0];
 }
 async function fetchPlanForCity(cityName, nights, profile, extras = {}) {
+  const rawNotes = profile.notes || '';
+  const notesCapped = rawNotes.slice(0, 500);
+  if (rawNotes.length > 500) console.warn(`[plan] notes truncated from ${rawNotes.length} to 500 chars`);
   try {
     const res = await fetch('/api/plan-destination', {
       method: 'POST',
@@ -622,8 +625,15 @@ async function fetchPlanForCity(cityName, nights, profile, extras = {}) {
         kids: profile.kids || 0,
         adults: profile.adults || 2,
         diet: profile.diet || [],
+        startDate: profile.startDate || '',
+        accessibility: !!profile.accessibility,
+        localOnly: !!profile.localOnly,
+        indoorAlt: !!profile.indoorAlt,
+        notes: notesCapped,
         arrivalTime: extras.arrivalTime || '',
-        arrivalAirport: extras.arrivalAirport || ''
+        arrivalAirport: extras.arrivalAirport || '',
+        departureTime: extras.departureTime || '',
+        departureAirport: extras.departureAirport || ''
       })
     });
     if (!res.ok) {
@@ -808,7 +818,9 @@ async function startGeneration() {
       const nights = profile.nights?.[ci] || 0;
       const extras = {
         arrivalTime: profile.arrivalTimes?.[ci] || '',
-        arrivalAirport: profile.airports?.[ci] || ''
+        arrivalAirport: profile.airports?.[ci] || '',
+        departureTime: profile.cityData?.[ci]?.departureTime || '',
+        departureAirport: profile.cityData?.[ci]?.departureAirport || ''
       };
       const planResp = await fetchPlanForCity(cityName, nights, profile, extras);
       if (!planResp || !planResp.options?.length) return;
