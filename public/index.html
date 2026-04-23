@@ -312,23 +312,23 @@ input::placeholder { color: var(--step-inactive); }
     <h2 data-i18n="step1_h2">Where are you headed?</h2>
     <p class="subtitle" data-i18n="step1_subtitle">Add one or more cities. Set how many nights in each.</p>
     <div id="flights-gate" class="flights-gate">
-      <div class="flights-gate-q">Have you booked your flights yet?</div>
+      <div class="flights-gate-q" data-i18n="flights_gate_q">Have you booked your flights yet?</div>
       <div class="flights-gate-choices">
         <button type="button" class="flights-choice" onclick="setFlightsMode(true)">
           <div class="flights-choice-icon">✈️</div>
-          <div class="flights-choice-label">Yes, I have the details</div>
-          <div class="flights-choice-desc">Airport codes and exact times</div>
+          <div class="flights-choice-label" data-i18n="flights_choice_yes_label">Yes, I have the details</div>
+          <div class="flights-choice-desc" data-i18n="flights_choice_yes_desc">Airport codes and exact times</div>
         </button>
         <button type="button" class="flights-choice" onclick="setFlightsMode(false)">
           <div class="flights-choice-icon">🤷</div>
-          <div class="flights-choice-label">Not yet / rough idea</div>
-          <div class="flights-choice-desc">We'll pick the closest airport for you</div>
+          <div class="flights-choice-label" data-i18n="flights_choice_no_label">Not yet / rough idea</div>
+          <div class="flights-choice-desc" data-i18n="flights_choice_no_desc">We'll pick the closest airport for you</div>
         </button>
       </div>
     </div>
     <div id="flights-mode-indicator" class="flights-mode-indicator" style="display:none;">
       <span id="flights-mode-label"></span>
-      <button type="button" class="change-answer-btn" onclick="resetFlightsMode()">Change answer</button>
+      <button type="button" class="change-answer-btn" onclick="resetFlightsMode()" data-i18n="change_answer">Change answer</button>
     </div>
     <div class="city-list" id="cityList" style="display:none;">
       <div class="city-row">
@@ -487,6 +487,12 @@ function u(str) { return str.toLocaleUpperCase(LOCALE_TAG[currentLang] || 'en-US
 function applyTranslations() {
   document.querySelectorAll('[data-i18n]').forEach(el => { const v = t(el.dataset.i18n); el.textContent = el.hasAttribute('data-i18n-upper') ? u(v) : v; });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  // Re-apply dynamic labels that are set by JS (not via data-i18n) so they pick up the new language.
+  if (typeof state !== 'undefined' && state.flightsBooked !== null) {
+    updateFlightLabels();
+    const label = document.getElementById('flights-mode-label');
+    if (label) label.textContent = state.flightsBooked ? t('flights_indicator_booked') : t('flights_indicator_rough');
+  }
 }
 function changeLang(lang) {
   currentLang = lang;
@@ -550,8 +556,8 @@ function removeCity(btn) { if (document.querySelectorAll('.city-row').length > 1
 function updateFlightLabels() {
   if (state.flightsBooked === null) return;
   const booked = state.flightsBooked === true;
-  document.querySelectorAll('.sh-lands').forEach(el => el.textContent = booked ? '🛬 Arrival' : '⏱ Est. arrival');
-  document.querySelectorAll('.city-departure-header').forEach(el => el.textContent = booked ? '🛫 Departure' : '⏱ Est. departure');
+  document.querySelectorAll('.sh-lands').forEach(el => el.textContent = booked ? t('arrival_header_booked') : t('arrival_header_rough'));
+  document.querySelectorAll('.city-departure-header').forEach(el => el.textContent = booked ? t('departure_header_booked') : t('departure_header_rough'));
 }
 function setFlightsMode(booked) {
   state.flightsBooked = !!booked;
@@ -566,8 +572,8 @@ function setFlightsMode(booked) {
   const indicator = document.getElementById('flights-mode-indicator');
   indicator.style.display = '';
   document.getElementById('flights-mode-label').textContent = booked
-    ? '✈️ Using your flight details'
-    : '🤷 Closest airport will be auto-picked';
+    ? t('flights_indicator_booked')
+    : t('flights_indicator_rough');
   updateFlightLabels();
 }
 function resetFlightsMode() {
