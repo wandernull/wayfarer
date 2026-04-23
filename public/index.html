@@ -113,6 +113,10 @@ input::placeholder { color: var(--step-inactive); }
 .summary-item { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
 .summary-item .s-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 5px; }
 .summary-item .s-value { font-size: 14px; font-weight: 600; }
+.pref-pill { display: inline-block; background: var(--accent-light); color: var(--accent); padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; margin: 2px 4px 2px 0; }
+.flights-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; }
+.flights-pill.booked { background: var(--accent-light); color: var(--accent); }
+.flights-pill.rough { background: #fff4e6; color: #a66400; }
 .summary-cities { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
 .city-route-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 7px; }
 .city-tag { background: var(--accent-light); color: var(--accent); border-radius: 100px; padding: 4px 11px; font-size: 12px; font-weight: 600; }
@@ -624,10 +628,60 @@ function getTripProfile() {
 }
 function buildSummary() {
   const p = getTripProfile();
-  document.getElementById('summaryRoute').innerHTML = p.cities.length ? p.cities.map((c,i) => `${i>0?'<span class="route-arrow">→</span>':''}<span class="city-tag">${c||'—'} <span style="opacity:.6;font-weight:400">${p.nights[i]}n</span></span>`).join('') : `<span style="color:var(--text-secondary);font-size:13px;">${t('sum_no_cities')}</span>`;
+  const routeHtml = p.cities.length
+    ? p.cities.map((c, i) => {
+        const nights = p.nights[i];
+        const arrT = p.arrivalTimes?.[i] || '';
+        const arrA = p.airports?.[i] || '';
+        const depT = p.cityData?.[i]?.departureTime || '';
+        const depA = p.cityData?.[i]?.departureAirport || '';
+        const arrIcon = p.flightsBooked === false ? '⏱' : '🛬';
+        const depIcon = p.flightsBooked === false ? '⏱' : '🛫';
+        const legParts = [`${nights}n`];
+        if (arrT) legParts.push(`${arrIcon} ${arrT}${arrA ? ' ' + arrA : ''}`);
+        if (depT) legParts.push(`${depIcon} ${depT}${depA ? ' ' + depA : ''}`);
+        return `${i > 0 ? '<span class="route-arrow">→</span>' : ''}<span class="city-tag">${c || '—'} <span style="opacity:.6;font-weight:400">${legParts.join(' · ')}</span></span>`;
+      }).join('')
+    : `<span style="color:var(--text-secondary);font-size:13px;">${t('sum_no_cities')}</span>`;
+  document.getElementById('summaryRoute').innerHTML = routeHtml;
+
   const totalNights = p.nights.reduce((a,b)=>a+b,0);
   const groupStr = `${p.adults} ${p.adults>1?t('adults_p'):t('adult_s')}${p.kids>0?`, ${p.kids} ${p.kids>1?t('kids_p'):t('kid_s')}`:' '+t('no_kids')}`;
-  document.getElementById('summaryGrid').innerHTML = `<div class="summary-item"><div class="s-label">${u(t('sum_group'))}</div><div class="s-value">${groupStr}</div></div><div class="summary-item"><div class="s-label">${u(t('sum_duration'))}</div><div class="s-value">${totalNights} ${t('nights_unit')}</div></div><div class="summary-item"><div class="s-label">${u(t('sum_budget'))}</div><div class="s-value">${p.budget}</div></div><div class="summary-item"><div class="s-label">${u(t('sum_pace'))}</div><div class="s-value">${p.pace}</div></div><div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_vibe'))}</div><div class="s-value">${p.tripTypes.join(', ')||t('not_specified')}</div></div><div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_diet'))}</div><div class="s-value">${p.diet.join(', ')||t('no_restrictions')}</div></div>`;
+
+  let startDateStr = '—';
+  if (p.startDate) {
+    const d = new Date(p.startDate);
+    if (!isNaN(d.getTime())) {
+      startDateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+  }
+
+  const flightsHtml = p.flightsBooked === true
+    ? `<span class="flights-pill booked">✈️ Booked</span>`
+    : p.flightsBooked === false
+      ? `<span class="flights-pill rough">🤷 Not booked · auto airports</span>`
+      : '—';
+
+  const prefs = [];
+  if (p.accessibility) prefs.push('♿ Accessibility needed');
+  if (p.localOnly) prefs.push('🌿 Off-tourist');
+  if (p.indoorAlt) prefs.push('🌧 Indoor backup');
+  const prefsHtml = prefs.length
+    ? prefs.map(s => `<span class="pref-pill">${s}</span>`).join('')
+    : `<span style="color:var(--text-secondary);font-size:13px;">None</span>`;
+
+  document.getElementById('summaryGrid').innerHTML =
+    `<div class="summary-item"><div class="s-label">${u(t('sum_group'))}</div><div class="s-value">${groupStr}</div></div>
+    <div class="summary-item"><div class="s-label">${u(t('sum_duration'))}</div><div class="s-value">${totalNights} ${t('nights_unit')}</div></div>
+    <div class="summary-item"><div class="s-label">START DATE</div><div class="s-value">${startDateStr}</div></div>
+    <div class="summary-item"><div class="s-label">FLIGHTS</div><div class="s-value">${flightsHtml}</div></div>
+    <div class="summary-item"><div class="s-label">${u(t('sum_budget'))}</div><div class="s-value">${p.budget}</div></div>
+    <div class="summary-item"><div class="s-label">${u(t('sum_pace'))}</div><div class="s-value">${p.pace}</div></div>
+    <div class="summary-item"><div class="s-label">STAY</div><div class="s-value">${p.accom || '—'}</div></div>
+    <div class="summary-item"><div class="s-label">INTERESTS</div><div class="s-value">${p.interests.join(', ')||t('not_specified')}</div></div>
+    <div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_vibe'))}</div><div class="s-value">${p.tripTypes.join(', ')||t('not_specified')}</div></div>
+    <div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_diet'))}</div><div class="s-value">${p.diet.join(', ')||t('no_restrictions')}</div></div>
+    <div class="summary-item" style="grid-column:1/-1"><div class="s-label">PREFERENCES</div><div class="s-value">${prefsHtml}</div></div>`;
 }
 const normalizeVenueName = s => (s || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
 const CANONICAL_THEMES = ['culture','history','art','food','nightlife','beach','nature','wellness','adventure','shopping','family','romantic','relaxation','active'];
