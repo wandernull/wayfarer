@@ -813,7 +813,6 @@ function formatReviewCount(n) {
 function formatCityMenu(cityName, buckets) {
   if (!buckets) return '';
   const labels = {
-    lodging: 'Hotels',
     restaurant: 'Restaurants',
     cafe: 'Cafes',
     attraction: 'Sights',
@@ -823,15 +822,19 @@ function formatCityMenu(cityName, buckets) {
     gym: 'Gyms',
     park: 'Parks/Beaches'
   };
+  const FOOD_KEYS = new Set(['restaurant', 'cafe', 'bar']);
   const lines = [`=== ${cityName} ===`];
   for (const [key, label] of Object.entries(labels)) {
     const items = buckets[key];
     if (!items?.length) continue;
     lines.push(`${label}:`);
+    const showFood = FOOD_KEYS.has(key);
     for (const it of items) {
+      const price = showFood && it.priceLevel ? ` ${it.priceLevel}` : '';
+      const cuisine = showFood && it.cuisine ? ` ${it.cuisine}` : '';
       const rating = it.rating ? ` [${it.rating}★·${formatReviewCount(it.reviews)}]` : '';
       const addr = it.address ? ` — ${shortAddr(it.address)}` : '';
-      lines.push(`  - ${it.name}${rating}${addr}`);
+      lines.push(`  -${price}${cuisine} ${it.name}${rating}${addr}`);
     }
   }
   return lines.join('\n');

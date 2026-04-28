@@ -19,7 +19,47 @@ export async function onRequestPost(context) {
   const wantsActive = /active|sport|fitness|gym|yoga|run|hike/.test(interestText);
   const wantsNature = /nature|outdoor|park|hike|beach/.test(interestText) || kids > 0;
 
-  const FIELD_MASK = 'places.displayName,places.formattedAddress,places.rating,places.location,places.googleMapsUri,places.userRatingCount,places.businessStatus,places.primaryType,places.types';
+  const FIELD_MASK = 'places.displayName,places.formattedAddress,places.rating,places.location,places.googleMapsUri,places.userRatingCount,places.businessStatus,places.primaryType,places.types,places.priceLevel';
+
+  // Map Google's PRICE_LEVEL_* enum to a compact $/$$/$$$ string.
+  const priceLevelToSymbol = (lvl) => {
+    if (!lvl) return null;
+    const m = {
+      PRICE_LEVEL_FREE: null,
+      PRICE_LEVEL_INEXPENSIVE: '$',
+      PRICE_LEVEL_MODERATE: '$$',
+      PRICE_LEVEL_EXPENSIVE: '$$$',
+      PRICE_LEVEL_VERY_EXPENSIVE: '$$$$'
+    };
+    return m[lvl] || null;
+  };
+
+  // Derive a human cuisine label from Google's types[]. Returns null if no
+  // recognizable cuisine type is found. Only meaningful for restaurants/cafes.
+  const CUISINE_TYPE_MAP = {
+    italian_restaurant: 'Italian', french_restaurant: 'French',
+    japanese_restaurant: 'Japanese', chinese_restaurant: 'Chinese',
+    korean_restaurant: 'Korean', thai_restaurant: 'Thai',
+    vietnamese_restaurant: 'Vietnamese', indian_restaurant: 'Indian',
+    mexican_restaurant: 'Mexican', spanish_restaurant: 'Spanish',
+    greek_restaurant: 'Greek', turkish_restaurant: 'Turkish',
+    middle_eastern_restaurant: 'Middle Eastern', lebanese_restaurant: 'Lebanese',
+    mediterranean_restaurant: 'Mediterranean', american_restaurant: 'American',
+    brazilian_restaurant: 'Brazilian', african_restaurant: 'African',
+    indonesian_restaurant: 'Indonesian', ramen_restaurant: 'Ramen',
+    sushi_restaurant: 'Sushi', steak_house: 'Steakhouse',
+    seafood_restaurant: 'Seafood', vegetarian_restaurant: 'Vegetarian',
+    vegan_restaurant: 'Vegan', pizza_restaurant: 'Pizza',
+    barbecue_restaurant: 'BBQ', breakfast_restaurant: 'Breakfast',
+    brunch_restaurant: 'Brunch', cafe: 'Cafe', coffee_shop: 'Coffee',
+    bakery: 'Bakery', dessert_shop: 'Dessert',
+    fast_food_restaurant: 'Fast food', fine_dining_restaurant: 'Fine dining'
+  };
+  const deriveCuisine = (types) => {
+    if (!Array.isArray(types)) return null;
+    for (const t of types) if (CUISINE_TYPE_MAP[t]) return CUISINE_TYPE_MAP[t];
+    return null;
+  };
 
   const fetchBucket = async ({ includedTypes, maxResults, lat, lon, radius = 10000 }) => {
     try {
@@ -52,29 +92,31 @@ export async function onRequestPost(context) {
     } catch { return []; }
   };
 
-  const shape = (places, prefix) => places.map((p, i) => ({
+  const shape = (places, prefix, includeFood) => places.map((p, i) => ({
     id: `${prefix}${i + 1}`,
     name: p.displayName.text,
     primaryType: p.primaryType || null,
     rating: p.rating ? Math.round(p.rating * 10) / 10 : null,
     reviews: p.userRatingCount || 0,
+    priceLevel: priceLevelToSymbol(p.priceLevel),
+    cuisine: includeFood ? deriveCuisine(p.types) : null,
     address: p.formattedAddress || '',
     lat: p.location?.latitude || null,
     lng: p.location?.longitude || null,
     mapsUrl: p.googleMapsUri || null
   }));
 
-  // Bucket definitions — (key, includedTypes, maxResults, prefix, enabled)
+  // Bucket definitions — lodging dropped (MVP no longer plans accommodation).
+  // includeFood=true → derive cuisine from Google types and surface priceLevel.
   const bucketDefs = [
-    { key: 'lodging', types: ['lodging'], max: 12, prefix: 'H', on: true },
-    { key: 'restaurant', types: ['restaurant'], max: 25, prefix: 'R', on: true },
-    { key: 'cafe', types: ['cafe'], max: 10, prefix: 'C', on: true },
-    { key: 'attraction', types: ['tourist_attraction'], max: 12, prefix: 'S', on: true },
-    { key: 'museum', types: ['museum'], max: 8, prefix: 'M', on: true },
-    { key: 'bar', types: ['bar'], max: 8, prefix: 'B', on: wantsNightlife },
-    { key: 'nightclub', types: ['night_club'], max: 6, prefix: 'N', on: wantsNightlife },
-    { key: 'gym', types: ['gym'], max: 6, prefix: 'G', on: wantsActive },
-    { key: 'park', types: ['park'], max: 8, prefix: 'P', on: wantsNature }
+    { key: 'restaurant', types: ['restaurant'], max: 25, prefix: 'R', on: true, food: true },
+    { key: 'cafe', types: ['cafe'], max: 10, prefix: 'C', on: true, food: true },
+    { key: 'attraction', types: ['tourist_attraction'], max: 12, prefix: 'S', on: true, food: false },
+    { key: 'museum', types: ['museum'], max: 8, prefix: 'M', on: true, food: false },
+    { key: 'bar', types: ['bar'], max: 8, prefix: 'B', on: wantsNightlife, food: true },
+    { key: 'nightclub', types: ['night_club'], max: 6, prefix: 'N', on: wantsNightlife, food: false },
+    { key: 'gym', types: ['gym'], max: 6, prefix: 'G', on: wantsActive, food: false },
+    { key: 'park', types: ['park'], max: 8, prefix: 'P', on: wantsNature, food: false }
   ];
 
   const cityResults = await Promise.all(cities.map(async (c) => {
@@ -89,7 +131,7 @@ export async function onRequestPost(context) {
           maxResults: b.max,
           lat, lon
         });
-        return [b.key, shape(places, b.prefix)];
+        return [b.key, shape(places, b.prefix, b.food)];
       })
     );
     return [c.name, Object.fromEntries(bucketArr)];
