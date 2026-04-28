@@ -29,8 +29,25 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .route-city { background: var(--accent-light); color: var(--accent); padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; }
 .route-sep { color: var(--border); font-size: 14px; }
 .plan-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.plan-pill { background: #fff4e6; color: #a66400; padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; cursor: help; }
+.plan-pill { background: #fff4e6; color: #a66400; padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
 .plan-pill .plan-parent { opacity: 0.65; font-weight: 500; }
+.plan-pill.swappable { cursor: pointer; transition: transform 0.12s, background 0.12s; }
+.plan-pill.swappable:hover { background: #ffe8c4; transform: scale(1.03); }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal-card { background: var(--surface); border-radius: 16px; padding: 24px 26px; max-width: 580px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 18px 60px rgba(0,0,0,0.18); }
+.modal-card h3 { margin: 0 0 6px; font-size: 22px; font-family: 'DM Serif Display', serif; }
+.modal-subtitle { color: var(--text-secondary); font-size: 13px; margin-bottom: 20px; }
+.modal-city-header { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); text-transform: uppercase; margin: 18px 0 10px; }
+.modal-city-header:first-child { margin-top: 0; }
+.plan-option-card { border: 2px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.plan-option-card:hover { border-color: var(--accent); }
+.plan-option-card.current { border-color: var(--accent); background: var(--accent-light); }
+.plan-option-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.plan-option-tagline { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+.plan-option-themes { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.plan-option-theme-tag { background: var(--accent-light); color: var(--accent); padding: 2px 9px; border-radius: 100px; font-size: 11px; font-weight: 600; }
+.plan-option-plan { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 .btn-outline { padding: 8px 14px; border: 1.5px solid var(--border); border-radius: 8px; background: var(--surface); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: var(--text-primary); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 5px; }
 .btn-outline:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
 .btn-solid { padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
@@ -425,6 +442,16 @@ input::placeholder { color: var(--step-inactive); }
       <div class="loading-step" id="ls-2"><div class="ls-dot"></div><span data-i18n="loading_step_2">Calculating travel times & logistics</span></div>
       <div class="loading-step" id="ls-3"><div class="ls-dot"></div><span data-i18n="loading_step_3">Adding local tips & weather context</span></div>
       <div class="loading-step" id="ls-4"><div class="ls-dot"></div><span data-i18n="loading_step_4">Finalising your day-by-day plan</span></div>
+    </div>
+  </div>
+</div>
+<div id="plan-swap-modal" class="modal-backdrop" style="display:none;" onclick="if(event.target===this)closePlanSwap()">
+  <div class="modal-card">
+    <h3 data-i18n="modal_swap_title">Switch your trip plan</h3>
+    <p class="modal-subtitle" data-i18n="modal_swap_subtitle">Pick a different plan to regenerate your trip.</p>
+    <div id="plan-swap-options"></div>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closePlanSwap()" data-i18n="modal_cancel">Cancel</button>
     </div>
   </div>
 </div>
@@ -1065,10 +1092,13 @@ function showItinerary(profile, itinerary) {
   const pillsEl = document.getElementById('header-plan-pills');
   if (pillsEl) {
     const entries = Object.entries(state.plan?.byCity || {}).filter(([_, d]) => d?.picked?.title);
+    const swappable = entries.some(([_, d]) => (d.options || []).length > 1);
     pillsEl.innerHTML = entries.map(([cityName, d]) => {
       const tagline = (d.picked.tagline || '').replace(/"/g, '&quot;');
       const parent = entries.length > 1 ? `<span class="plan-parent">${cityName}:</span>` : '';
-      return `<div class="plan-pill" title="${tagline}">🎯 ${parent}${d.picked.title}</div>`;
+      const cls = swappable ? 'plan-pill swappable' : 'plan-pill';
+      const onclick = swappable ? ' onclick="openPlanSwap()"' : '';
+      return `<div class="${cls}" title="${tagline}"${onclick}>🎯 ${parent}${d.picked.title}</div>`;
     }).join('');
   }
   let sbHtml = `<span class="sb-label">${u(t('sb_itinerary'))}</span>`;
@@ -1195,6 +1225,80 @@ DINING: Day 1 evening-arrival → dinner only. Day 1 midday-arrival → lunch + 
   } catch(e) { btn.disabled = false; btn.textContent = t('regen_day'); alert(t('alert_regen_error')); }
 }
 function setSbActive(el) { document.querySelectorAll('.sb-day').forEach(l => l.classList.remove('active')); el.classList.add('active'); }
+function openPlanSwap() {
+  const container = document.getElementById('plan-swap-options');
+  const byCity = state.plan?.byCity || {};
+  const entries = Object.entries(byCity).filter(([_, d]) => d?.options?.length);
+  if (!entries.length) {
+    container.innerHTML = `<p style="color:var(--text-secondary);font-size:14px;">${t('modal_no_alternatives')}</p>`;
+  } else {
+    let html = '';
+    const showCityHeaders = entries.length > 1;
+    for (const [cityName, data] of entries) {
+      if (showCityHeaders) html += `<div class="modal-city-header">${cityName}</div>`;
+      for (const opt of data.options) {
+        const isCurrent = opt.id === data.picked?.id;
+        const themes = (opt.themes || []).map(th => `<span class="plan-option-theme-tag">${th}</span>`).join('');
+        const planLine = (opt.plan || []).map(p => `${p.subArea} (${p.nights}n)`).join(' → ');
+        const tagline = (opt.tagline || '').replace(/'/g, '&#39;');
+        const currentLabel = isCurrent ? ` <span style="opacity:.7;font-weight:500;">${t('modal_current_label')}</span>` : '';
+        html += `<div class="plan-option-card${isCurrent ? ' current' : ''}" onclick="swapPlanOption('${cityName.replace(/'/g, "\\'")}','${opt.id}')">
+          <div class="plan-option-title">🎯 ${opt.title}${currentLabel}</div>
+          <div class="plan-option-tagline">${tagline}</div>
+          <div class="plan-option-themes">${themes}</div>
+          <div class="plan-option-plan">${planLine}</div>
+        </div>`;
+      }
+    }
+    container.innerHTML = html;
+  }
+  document.getElementById('plan-swap-modal').style.display = 'flex';
+}
+function closePlanSwap() {
+  document.getElementById('plan-swap-modal').style.display = 'none';
+}
+async function swapPlanOption(cityName, optionId) {
+  const data = state.plan?.byCity?.[cityName];
+  if (!data) { closePlanSwap(); return; }
+  const newOption = (data.options || []).find(o => o.id === optionId);
+  if (!newOption) { closePlanSwap(); return; }
+  if (newOption.id === data.picked?.id) { closePlanSwap(); return; }
+  if (!confirm(t('modal_swap_confirm'))) return;
+  closePlanSwap();
+  data.picked = newOption;
+  console.debug('[plan] swapped', cityName, '→', newOption.title);
+  // Re-run the pipeline from legs onward.
+  const profile = state.tripData.profile;
+  document.getElementById('itinerary-view').style.display = 'none';
+  document.getElementById('itinerary-header-extras').style.display = 'none';
+  document.getElementById('results-action-bar').style.display = 'none';
+  document.getElementById('loading-view').style.display = 'flex';
+  let si = 0;
+  const stepInterval = setInterval(() => {
+    if (si > 0) { const prev = document.getElementById(`ls-${si-1}`); if(prev) prev.classList.replace('active','done'); }
+    const cur = document.getElementById(`ls-${si}`); if (cur) cur.classList.add('active');
+    si++; if (si >= 5) clearInterval(stepInterval);
+  }, 900);
+  try {
+    const legs = buildLegs(profile, state.plan.byCity);
+    let candidates = null;
+    try { candidates = await fetchCandidatesForLegs(profile, legs); } catch (e) { console.warn('[swap] candidates fetch failed', e); }
+    state.candidates = candidates || null;
+    const menu = formatCandidatesMenu(candidates);
+    const itinerary = await callClaude(profile, null, menu, legs);
+    clearInterval(stepInterval);
+    for (let i = 0; i < 5; i++) { const el = document.getElementById(`ls-${i}`); el?.classList.remove('active'); el?.classList.add('done'); }
+    await new Promise(r => setTimeout(r, 400));
+    state.tripData = { ...state.tripData, itinerary, candidates, legs };
+    showItinerary(profile, itinerary);
+    enrichPlaces(profile, itinerary);
+  } catch (err) {
+    clearInterval(stepInterval);
+    document.getElementById('loading-view').style.display = 'none';
+    showItinerary(profile, state.tripData.itinerary);
+    alert(t('alert_error') + err.message);
+  }
+}
 (function initLang() {
   const saved = localStorage.getItem('jounee_lang');
   if (saved && translations[saved]) {
