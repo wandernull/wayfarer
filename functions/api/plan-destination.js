@@ -20,20 +20,16 @@ export async function onRequestPost(context) {
     tripTypes = [],
     pace,
     budget,
-    accom,
     kids = 0,
     adults = 2,
     diet = [],
     startDate = '',
+    endDate = '',
     accessibility = false,
     localOnly = false,
     indoorAlt = false,
     notes = '',
-    arrivalTime = '',
-    arrivalAirport = '',
-    departureTime = '',
-    departureAirport = '',
-    flightsBooked = null
+    arrivalTimeOfDay = ''
   } = body;
 
   if (!city || !nights) {
@@ -49,33 +45,28 @@ export async function onRequestPost(context) {
     }
   }
 
-  const arrivalLine = arrivalTime
-    ? `ARRIVAL: ${arrivalTime}${arrivalAirport ? ' via ' + arrivalAirport : ''}`
-    : 'ARRIVAL: unspecified';
-  const departureLine = departureTime
-    ? `DEPARTURE: ${departureTime}${departureAirport ? ' via ' + departureAirport : ''}`
-    : 'DEPARTURE: unspecified';
+  const todLabel = ({ morning: '☀️ Morning', midday: '🌤️ Midday', evening: '🌙 Evening' })[arrivalTimeOfDay] || arrivalTimeOfDay || 'unspecified';
+  const arrivalLine = `ARRIVAL TIME-OF-DAY: ${todLabel}`;
   const startLine = startDate
     ? `START DATE: ${startDate}${monthName ? ` (month: ${monthName})` : ''}`
     : 'START DATE: unspecified';
+  const endLine = endDate ? `END DATE: ${endDate}` : 'END DATE: unspecified';
   const notesLine = notes.trim() ? `NOTES: ${notes.trim()}` : 'NOTES: (none)';
 
   const userPrompt = `DESTINATION: ${city}
 TOTAL NIGHTS: ${nights}
 ${startLine}
+${endLine}
 ${arrivalLine}
-${departureLine}
 GROUP: ${adults} adults${kids > 0 ? `, ${kids} kids` : ''}
 INTERESTS: ${interests.join(', ') || 'general'}
 VIBE: ${tripTypes.join(', ') || 'general'}
 PACE: ${pace || 'Balanced'}
-BUDGET: ${budget || 'Mid-range'}
-STAY: ${accom || 'Hotel'}
+BUDGET: ${budget || '$$ Mid-range'}
 DIET: ${diet.join(', ') || 'none'}
 ACCESSIBILITY NEEDED: ${accessibility ? 'true' : 'false'}
 LOCAL / OFF-TOURIST PREFERRED: ${localOnly ? 'true' : 'false'}
 INDOOR BACKUP NEEDED: ${indoorAlt ? 'true' : 'false'}
-FLIGHTS BOOKED: ${flightsBooked === false ? 'false (user has no airport yet — resolve nearest major IATA airport for them)' : flightsBooked === true ? 'true' : 'unknown'}
 ${notesLine}
 
 Analyze this destination and return options as strict JSON.`;
@@ -96,14 +87,12 @@ TIER 1 — STRUCTURAL INVARIANTS (never overridable, not even by notes):
 TIER 2 — USER NOTES (highest user-signal priority):
 If the user's notes field says anything explicit, it OVERRIDES any default
 rule in this prompt. The user knows their own trip better than our heuristics.
-Notes can override: arrival proximity, departure proximity, relevance filter
-(vibe/interest incompatibilities), accessibility preference, local-only
-preference, kids-safety filter, season preference, minimum-nights-per-sub-area,
-theme preference, differentiation rule.
+Notes can override: relevance filter (vibe/interest incompatibilities),
+accessibility preference, local-only preference, kids-safety filter, season
+preference, minimum-nights-per-sub-area, theme preference, differentiation
+rule, arrival-time-of-day tiebreaker.
 
 Examples of valid overrides:
-- "we don't mind a 2-hour late-night drive, put us in Ubud" → override
-  arrival proximity; plan Ubud.
 - "we're fine with stairs" → override accessibility filter.
 - "our teens are cool with bars" → override kids→no-nightlife filter.
 - "1 night each in 4 sub-areas, we want variety" → override 2-night minimum.
@@ -141,33 +130,21 @@ Read every field of the user profile. Signals and how to use them:
 5. INDOOR BACKUP NEEDED = true → prefer sub-areas with good rain-day options
    (museums, galleries, covered markets). Purely beach/outdoor sub-areas are
    risky if this is true AND the season is unreliable.
-6. ARRIVAL TIME / AIRPORT → the FIRST sub-area must be reachable from the
-   airport without a brutal late-night haul.
-   - Arrival after 20:00 → first sub-area within ~1 hour ground transfer of
-     the airport.
-   - Arrival 14:00–20:00 → up to ~2 hours from airport is acceptable.
-   - Arrival before 14:00 → any sub-area is fair.
-7. DEPARTURE TIME / AIRPORT → the LAST sub-area must be reachable back to
-   the departure airport with comfortable buffer — mirror the arrival rule.
-8. DIET is not a sub-area driver on its own, but mention in rationale if a
+6. ARRIVAL TIME-OF-DAY (☀️ Morning / 🌤️ Midday / 🌙 Evening) shapes the
+   user's energy on day 1. Use it lightly when scoring sub-areas:
+   - Morning: full first day available — any sub-area is fair.
+   - Midday: half a first day — slightly favor sub-areas closer to a
+     central transit hub if multiple options are equivalent.
+   - Evening: tired arrival, only dinner & light activity on day 1 —
+     favor a smaller, walkable, lower-friction sub-area for the first
+     leg if you have a choice. Do not contort the plan for this; it's a
+     mild tiebreaker, not a hard rule.
+7. DIET is not a sub-area driver on its own, but mention in rationale if a
    sub-area is notably strong or weak for the diet.
-9. BUDGET + STAY shape which sub-areas make sense (filter luxury-only
-   sub-areas out for budget travelers; hostel-heavy ones out for luxury).
-10. FLIGHTS BOOKED = false → the user has NOT booked flights yet and
-    provided only approximate arrival/departure times (no airport codes).
-    You MUST resolve the nearest major commercial IATA airport for them
-    and return it in the response:
-    - If arrivalTime is set → include "suggestedArrivalAirport": "XXX"
-      in the top-level JSON (IATA 3-letter code).
-    - If departureTime is set → include "suggestedDepartureAirport": "XXX".
-    Pick the airport travelers most commonly use for that destination
-    (Bali → DPS; Paris → CDG by default over ORY; Tokyo → NRT or HND,
-    prefer HND for domestic ease; NYC → JFK over LGA/EWR by default;
-    Istanbul → IST over SAW; Rome → FCO over CIA). For multi-city trips
-    planned per-city, return the airport most relevant for that city's
-    arrival/departure leg.
-    If FLIGHTS BOOKED = true or unknown, OMIT both suggestedArrivalAirport
-    and suggestedDepartureAirport from the response.
+8. BUDGET shapes which sub-areas make sense (filter luxury-only sub-areas
+   out for budget travelers; hostel-heavy ones out for luxury). The MVP
+   has no accommodation choice — budget refers to dining & paid activities
+   only.
 
 ────── SUB-AREA GROUPING ──────
 Decide whether the destination has GENUINELY DISTINCT sub-areas (town-scale
@@ -232,8 +209,6 @@ Output schema — return EXACTLY this shape, no extra fields:
 {
   "destination": "<city>",
   "hasDistinctSubAreas": true | false,
-  "suggestedArrivalAirport": "DPS",     // INCLUDE ONLY when FLIGHTS BOOKED = false AND arrivalTime is set (IATA 3-letter)
-  "suggestedDepartureAirport": "DPS",   // INCLUDE ONLY when FLIGHTS BOOKED = false AND departureTime is set
   "options": [
     {
       "id": "kebab-case-slug",
@@ -259,10 +234,7 @@ Before returning, verify for each option:
 - if notes excluded specific sub-areas, they do NOT appear;
 - if notes explicitly overrode a default rule, that rule was not silently
   re-enforced;
-- the rationale cites something concrete from the profile;
-- if FLIGHTS BOOKED = false, suggestedArrivalAirport and/or
-  suggestedDepartureAirport are present in the top-level JSON as IATA
-  codes when the respective times are set.`;
+- the rationale cites something concrete from the profile.`;
 
   const upstream = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -319,8 +291,6 @@ Before returning, verify for each option:
   return new Response(JSON.stringify({
     destination: parsed.destination || city,
     hasDistinctSubAreas: !!parsed.hasDistinctSubAreas,
-    suggestedArrivalAirport: parsed.suggestedArrivalAirport || null,
-    suggestedDepartureAirport: parsed.suggestedDepartureAirport || null,
     options: validOptions
   }), {
     headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
