@@ -47,16 +47,16 @@ export async function onRequestPost(context) {
 
   const todLabel = ({ morning: '☀️ Morning', midday: '🌤️ Midday', evening: '🌙 Evening' })[arrivalTimeOfDay] || arrivalTimeOfDay || 'unspecified';
   const arrivalLine = `ARRIVAL TIME-OF-DAY: ${todLabel}`;
-  const startLine = startDate
-    ? `START DATE: ${startDate}${monthName ? ` (month: ${monthName})` : ''}`
-    : 'START DATE: unspecified';
-  const endLine = endDate ? `END DATE: ${endDate}` : 'END DATE: unspecified';
+  const datesLine = (startDate && endDate)
+    ? `CITY DATES: ${startDate} → ${endDate}${monthName ? ` (month: ${monthName})` : ''}`
+    : (startDate
+        ? `CITY START DATE: ${startDate}${monthName ? ` (month: ${monthName})` : ''}`
+        : 'CITY DATES: unspecified');
   const notesLine = notes.trim() ? `NOTES: ${notes.trim()}` : 'NOTES: (none)';
 
   const userPrompt = `DESTINATION: ${city}
-TOTAL NIGHTS: ${nights}
-${startLine}
-${endLine}
+NIGHTS IN THIS CITY: ${nights}
+${datesLine}
 ${arrivalLine}
 GROUP: ${adults} adults${kids > 0 ? `, ${kids} kids` : ''}
 INTERESTS: ${interests.join(', ') || 'general'}
@@ -117,10 +117,12 @@ TIER 3 — DEFAULT RULES (apply unless notes say otherwise):
 Read every field of the user profile. Signals and how to use them:
 
 1. INTERESTS + VIBE drive which themes are acceptable.
-2. START DATE → month → season. Monsoon-affected destinations (Bali Nov–Mar,
-   parts of SE Asia May–Oct, Caribbean Jun–Nov) make beach/outdoor sub-areas
-   a worse pick. Ski towns in summer, beach towns in winter are poor fits.
-   Mention season in rationale when it drives a pick.
+2. CITY DATES (per city, not trip-wide) → month → season. Monsoon-affected
+   destinations (Bali Nov–Mar, parts of SE Asia May–Oct, Caribbean Jun–Nov)
+   make beach/outdoor sub-areas a worse pick. Ski towns in summer, beach
+   towns in winter are poor fits. Mention season in rationale when it drives
+   a pick. Each planner call covers ONE city's date range, so use that
+   city's start date for the seasonal lens.
 3. ACCESSIBILITY NEEDED = true → prefer flat, walkable, paved sub-areas;
    avoid hill-heavy / stair-heavy ones (Ubud rice terraces, Santorini
    villages, Positano cliffs) unless no alternative exists.

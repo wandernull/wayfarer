@@ -76,14 +76,13 @@ input::placeholder { color: var(--step-inactive); }
 .city-row .remove-btn:hover { color: var(--danger, #c0392b); background: #fdf2f2; }
 .city-row-field { margin-bottom: 14px; padding-right: 36px; }
 .city-row-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); text-transform: uppercase; display: block; margin-bottom: 6px; }
-.city-flight-grid { display: grid; grid-template-columns: 1fr 1fr 100px; gap: 14px; align-items: end; }
-.city-flight-grid.two-col-grid { grid-template-columns: 1fr 100px; }
+.city-flight-grid { display: grid; grid-template-columns: minmax(120px, 1fr) 1fr 1fr; gap: 12px; align-items: end; }
 .flight-block-inputs { display: grid; grid-template-columns: 1fr 100px; gap: 8px; }
 .flight-block-inputs .airport-select,
 .flight-block-inputs input[type="time"] { width: 100%; min-width: 0; padding: 12px 10px; }
 .flight-block-inputs input[type="time"] { text-align: center; }
-.nights-block input[type="number"] { width: 100%; padding: 12px; text-align: center; }
 .arrival-tod-select { width: 100%; min-width: 0; padding: 12px 10px; font-family: inherit; font-size: 14px; }
+.city-date-input { width: 100%; min-width: 0; padding: 12px 10px; font-family: inherit; font-size: 14px; box-sizing: border-box; }
 .airport-select:disabled { opacity: 0.5; cursor: not-allowed; }
 .flights-gate { margin: 18px 0 12px; }
 .flights-gate-q { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
@@ -253,7 +252,6 @@ input::placeholder { color: var(--step-inactive); }
   .city-row { padding: 14px 16px; }
   .city-flight-grid { grid-template-columns: 1fr; gap: 10px; }
   .flight-block-inputs { grid-template-columns: 1fr 90px; gap: 6px; }
-  .flights-gate-choices { grid-template-columns: 1fr; }
 }
 
 #lang-switcher { width: auto; padding: 6px 10px; font-size: 13px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-primary); cursor: pointer; font-family: 'DM Sans', sans-serif; flex-shrink: 0; }
@@ -335,7 +333,7 @@ input::placeholder { color: var(--step-inactive); }
           <span class="city-row-label" data-i18n="city_country_header">City, Country</span>
           <div class="autocomplete-wrap"><input type="text" placeholder="e.g. Paris, France" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder"/></div>
         </div>
-        <div class="city-flight-grid two-col-grid">
+        <div class="city-flight-grid">
           <div class="arrival-tod-block">
             <span class="city-row-label" data-i18n="arrival_when">Arrival</span>
             <select class="arrival-tod-select">
@@ -344,18 +342,18 @@ input::placeholder { color: var(--step-inactive); }
               <option value="evening" data-i18n="tod_evening">🌙 Evening</option>
             </select>
           </div>
-          <div class="nights-block">
-            <span class="city-row-label" data-i18n="nights_header">Nights</span>
-            <input type="number" min="1" max="30" value="3" class="nights-input"/>
+          <div class="city-date-block">
+            <span class="city-row-label" data-i18n="start_date">Start date</span>
+            <input type="date" class="city-start-date city-date-input"/>
+          </div>
+          <div class="city-date-block">
+            <span class="city-row-label" data-i18n="end_date">End date</span>
+            <input type="date" class="city-end-date city-date-input"/>
           </div>
         </div>
       </div>
     </div>
     <button class="add-city-btn" onclick="addCity()" data-i18n="add_another_city">+ Add another city</button>
-    <div class="two-col">
-      <div class="field"><label data-i18n="start_date">Start date</label><input type="date" id="startDate"/></div>
-      <div class="field"><label data-i18n="end_date">End date</label><input type="date" id="endDate"/></div>
-    </div>
     <span class="chip-label" data-i18n="budget_label">Budget</span>
     <div class="chip-group" id="budget">
       <div class="chip" onclick="singleChip(this,'budget')" data-i18n="budget_chip_low">$ Budget</div>
@@ -504,7 +502,7 @@ function addCity() {
       <span class="city-row-label" data-i18n="city_country_header">${t('city_country_header')}</span>
       <div class="autocomplete-wrap"><input type="text" placeholder="${t('city_placeholder_2')}" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder_2"/></div>
     </div>
-    <div class="city-flight-grid two-col-grid">
+    <div class="city-flight-grid">
       <div class="arrival-tod-block">
         <span class="city-row-label" data-i18n="arrival_when">${t('arrival_when')}</span>
         <select class="arrival-tod-select">
@@ -513,9 +511,13 @@ function addCity() {
           <option value="evening" data-i18n="tod_evening">${t('tod_evening')}</option>
         </select>
       </div>
-      <div class="nights-block">
-        <span class="city-row-label" data-i18n="nights_header">${t('nights_header')}</span>
-        <input type="number" min="1" max="30" value="3" class="nights-input"/>
+      <div class="city-date-block">
+        <span class="city-row-label" data-i18n="start_date">${t('start_date')}</span>
+        <input type="date" class="city-start-date city-date-input"/>
+      </div>
+      <div class="city-date-block">
+        <span class="city-row-label" data-i18n="end_date">${t('end_date')}</span>
+        <input type="date" class="city-end-date city-date-input"/>
       </div>
     </div>`;
   document.getElementById('cityList').appendChild(row);
@@ -548,22 +550,45 @@ function to12h(t) {
   const h12 = h % 12 || 12;
   return `${h12}:${String(m).padStart(2, '0')} ${period}`;
 }
+function nightsBetween(startISO, endISO) {
+  if (!startISO || !endISO) return 0;
+  const a = new Date(startISO + 'T00:00:00');
+  const b = new Date(endISO + 'T00:00:00');
+  if (isNaN(a.getTime()) || isNaN(b.getTime())) return 0;
+  const diff = Math.round((b - a) / 86400000);
+  return Math.max(0, diff);
+}
+function addDaysISO(startISO, days) {
+  if (!startISO) return '';
+  const d = new Date(startISO + 'T00:00:00');
+  if (isNaN(d.getTime())) return '';
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 function getTripProfile() {
   const rows = [...document.querySelectorAll('.city-row')];
-  const cityData = rows.map(row => ({
-    city: row.querySelector('.city-input')?.value.trim() || '',
-    nights: parseInt(row.querySelector('.nights-input')?.value) || 3,
-    arrivalTimeOfDay: row.querySelector('.arrival-tod-select')?.value || 'midday'
-  })).filter(d => d.city);
+  const cityData = rows.map(row => {
+    const cityStartDate = row.querySelector('.city-start-date')?.value || '';
+    const cityEndDate = row.querySelector('.city-end-date')?.value || '';
+    return {
+      city: row.querySelector('.city-input')?.value.trim() || '',
+      cityStartDate,
+      cityEndDate,
+      nights: nightsBetween(cityStartDate, cityEndDate),
+      arrivalTimeOfDay: row.querySelector('.arrival-tod-select')?.value || 'midday'
+    };
+  }).filter(d => d.city);
   return {
     cityData,
     cities: cityData.map(d => d.city),
     nights: cityData.map(d => d.nights),
+    cityStartDates: cityData.map(d => d.cityStartDate),
+    cityEndDates: cityData.map(d => d.cityEndDate),
     arrivalTimeOfDay: cityData.map(d => d.arrivalTimeOfDay),
     lats: rows.filter(r => r.querySelector('.city-input')?.value.trim()).map(r => parseFloat(r.dataset.lat) || 0),
     lons: rows.filter(r => r.querySelector('.city-input')?.value.trim()).map(r => parseFloat(r.dataset.lon) || 0),
-    startDate: document.getElementById('startDate')?.value || '',
-    endDate: document.getElementById('endDate')?.value || '',
+    startDate: cityData[0]?.cityStartDate || '',
+    endDate: cityData[cityData.length - 1]?.cityEndDate || '',
     adults: state.adults, kids: state.kids,
     tripTypes: [...document.querySelectorAll('#tripType .chip.selected')].map(c => c.textContent.trim()),
     pace: document.querySelector('#pace .chip.selected')?.textContent.trim() || 'Balanced',
@@ -702,8 +727,8 @@ async function fetchPlanForCity(cityName, nights, profile, extras = {}) {
         kids: profile.kids || 0,
         adults: profile.adults || 2,
         diet: profile.diet || [],
-        startDate: profile.startDate || '',
-        endDate: profile.endDate || '',
+        startDate: extras.cityStartDate || '',
+        endDate: extras.cityEndDate || '',
         accessibility: !!profile.accessibility,
         localOnly: !!profile.localOnly,
         indoorAlt: !!profile.indoorAlt,
@@ -732,28 +757,39 @@ function buildLegs(profile, planByCity) {
     const cityPlan = planByCity?.[cityName];
     const picked = cityPlan?.picked;
     const userArrTod = profile.arrivalTimeOfDay?.[ci] || '';
+    const cityStart = profile.cityStartDates?.[ci] || '';
+    const cityEnd = profile.cityEndDates?.[ci] || '';
     if (!picked?.plan?.length) {
       legs.push({
         parentCity: cityName,
         subArea: cityName,
         nights: profile.nights?.[ci] || 0,
         arrivalTimeOfDay: userArrTod,
+        legStartDate: cityStart,
+        legEndDate: cityEnd,
         isFirstLegOfCity: true,
         isLastLegOfCity: true
       });
       return;
     }
+    let cursor = cityStart;
     picked.plan.forEach((p, pi) => {
       const isFirst = pi === 0;
       const isLast = pi === picked.plan.length - 1;
+      const nightsThis = Number(p.nights) || 0;
+      const legStart = cursor || '';
+      const legEnd = isLast ? cityEnd : addDaysISO(cursor, nightsThis);
       legs.push({
         parentCity: cityName,
         subArea: p.subArea,
-        nights: Number(p.nights) || 0,
+        nights: nightsThis,
         arrivalTimeOfDay: isFirst ? userArrTod : '',
+        legStartDate: legStart,
+        legEndDate: legEnd,
         isFirstLegOfCity: isFirst,
         isLastLegOfCity: isLast
       });
+      cursor = legEnd;
     });
   });
   return legs;
@@ -900,7 +936,9 @@ async function startGeneration() {
     await Promise.all(profile.cities.map(async (cityName, ci) => {
       const nights = profile.nights?.[ci] || 0;
       const extras = {
-        arrivalTimeOfDay: profile.arrivalTimeOfDay?.[ci] || ''
+        arrivalTimeOfDay: profile.arrivalTimeOfDay?.[ci] || '',
+        cityStartDate: profile.cityStartDates?.[ci] || '',
+        cityEndDate: profile.cityEndDates?.[ci] || ''
       };
       const planResp = await fetchPlanForCity(cityName, nights, profile, extras);
       if (!planResp || !planResp.options?.length) return;
@@ -977,15 +1015,16 @@ async function startGeneration() {
 }
 async function callClaude(profile, customPrompt, candidatesMenu, legs) {
   const src = (legs && legs.length)
-    ? legs.map(l => ({ city: l.subArea, parentCity: l.parentCity, nights: l.nights, arrivalTimeOfDay: l.arrivalTimeOfDay, isFirstLegOfCity: l.isFirstLegOfCity, isLastLegOfCity: l.isLastLegOfCity }))
-    : profile.cities.map((c,i) => ({ city: c, parentCity: c, nights: profile.nights[i], arrivalTimeOfDay: profile.arrivalTimeOfDay?.[i] || '', isFirstLegOfCity: true, isLastLegOfCity: true }));
+    ? legs.map(l => ({ city: l.subArea, parentCity: l.parentCity, nights: l.nights, arrivalTimeOfDay: l.arrivalTimeOfDay, legStartDate: l.legStartDate, legEndDate: l.legEndDate, isFirstLegOfCity: l.isFirstLegOfCity, isLastLegOfCity: l.isLastLegOfCity }))
+    : profile.cities.map((c,i) => ({ city: c, parentCity: c, nights: profile.nights[i], arrivalTimeOfDay: profile.arrivalTimeOfDay?.[i] || '', legStartDate: profile.cityStartDates?.[i] || '', legEndDate: profile.cityEndDates?.[i] || '', isFirstLegOfCity: true, isLastLegOfCity: true }));
   const todLabel = (tod) => ({ morning: '☀️ Morning', midday: '🌤️ Midday', evening: '🌙 Evening' })[tod] || tod || 'unspecified';
   const cityList = src.map((d, i) => {
     const parent = d.parentCity && d.parentCity !== d.city ? ` (sub-area of ${d.parentCity})` : '';
+    const dates = (d.legStartDate && d.legEndDate) ? `, ${d.legStartDate} → ${d.legEndDate}` : '';
     const tod = d.arrivalTimeOfDay ? `, arrives ${todLabel(d.arrivalTimeOfDay)}` : '';
     const prevLeg = i > 0 ? src[i-1] : null;
     const transfer = (prevLeg && !d.arrivalTimeOfDay) ? `, ground transfer from ${prevLeg.city}` : '';
-    return `${d.city}${parent} (${d.nights} nights${tod}${transfer})`;
+    return `${d.city}${parent} (${d.nights} nights${dates}${tod}${transfer})`;
   }).join(', ');
   const langInstruction = currentLang !== 'en' ? ` Respond entirely in ${langNames[currentLang]} language.` : '';
   const menuBlock = candidatesMenu ? `\n${candidatesMenu}\n` : '';
@@ -998,6 +1037,8 @@ DIET: ${profile.diet.join(', ')||'none'} | INTERESTS: ${profile.interests.join('
 ACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | INDOOR BACKUP: ${profile.indoorAlt}
 
 STRUCTURE — HARD RULE: Each trip leg corresponds to ONE sub-area home base. Your returned JSON's "cities" array MUST contain one entry per leg, in the same order, with city.name = the EXACT sub-area name (e.g. "Ubud", "Seminyak" — NOT the parent region like "Bali"). Set city.country to the real country. Each city's days MUST use ONLY that sub-area's menu block under AVAILABLE VENUES — never pull a venue from a different sub-area's menu. The menu IS the geographic bound.
+
+DATES — HARD RULE: Each leg in TRIP LEGS above includes a date range (e.g. "May 10 → May 13"). Generate days[] for that leg starting from the leg's start date. Each day's "date" field MUST be the human-formatted date derived from that leg's start date plus dayNumber-1 days (e.g. leg May 10–13: day 1 = "Sat May 10", day 2 = "Sun May 11", day 3 = "Mon May 12"). Do not invent or skip dates. Number of days[] in each city must equal that leg's nights.
 
 DAY 1 OF EACH LEG — derive opening from arrivalTimeOfDay:
 - ☀️ Morning  → first event around 10:00 AM. Full day flow: breakfast/cafe → morning sight → lunch → afternoon sight → dinner → optional bar.
