@@ -704,19 +704,15 @@ function buildLegs(profile, planByCity) {
   profile.cities.forEach((cityName, ci) => {
     const cityPlan = planByCity?.[cityName];
     const picked = cityPlan?.picked;
-    const userArrAirport = profile.airports?.[ci] || '';
-    const userArrTime = profile.arrivalTimes?.[ci] || '';
-    const userDepAirport = profile.cityData?.[ci]?.departureAirport || '';
-    const userDepTime = profile.cityData?.[ci]?.departureTime || '';
+    const userArrTod = profile.arrivalTimeOfDay?.[ci] || '';
     if (!picked?.plan?.length) {
       legs.push({
         parentCity: cityName,
         subArea: cityName,
         nights: profile.nights?.[ci] || 0,
-        arrivalAirport: userArrAirport,
-        arrivalTime: userArrTime,
-        departureAirport: userDepAirport,
-        departureTime: userDepTime
+        arrivalTimeOfDay: userArrTod,
+        isFirstLegOfCity: true,
+        isLastLegOfCity: true
       });
       return;
     }
@@ -727,10 +723,9 @@ function buildLegs(profile, planByCity) {
         parentCity: cityName,
         subArea: p.subArea,
         nights: Number(p.nights) || 0,
-        arrivalAirport: isFirst ? userArrAirport : '',
-        arrivalTime: isFirst ? userArrTime : '',
-        departureAirport: isLast ? userDepAirport : '',
-        departureTime: isLast ? userDepTime : ''
+        arrivalTimeOfDay: isFirst ? userArrTod : '',
+        isFirstLegOfCity: isFirst,
+        isLastLegOfCity: isLast
       });
     });
   });
@@ -810,6 +805,13 @@ function formatReviewCount(n) {
   if (n >= 1000) return `${(n/1000).toFixed(1)}k`;
   return String(n);
 }
+function shuffleInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 function formatCityMenu(cityName, buckets) {
   if (!buckets) return '';
   const labels = {
@@ -829,7 +831,10 @@ function formatCityMenu(cityName, buckets) {
     if (!items?.length) continue;
     lines.push(`${label}:`);
     const showFood = FOOD_KEYS.has(key);
-    for (const it of items) {
+    // Shuffle a copy so each call produces a different ordering — encourages
+    // Claude to vary picks across regenerations and across sub-areas.
+    const shuffled = shuffleInPlace([...items]);
+    for (const it of shuffled) {
       const price = showFood && it.priceLevel ? ` ${it.priceLevel}` : '';
       const cuisine = showFood && it.cuisine ? ` ${it.cuisine}` : '';
       const rating = it.rating ? ` [${it.rating}★·${formatReviewCount(it.reviews)}]` : '';
@@ -945,28 +950,68 @@ async function startGeneration() {
 }
 async function callClaude(profile, customPrompt, candidatesMenu, legs) {
   const src = (legs && legs.length)
-    ? legs.map(l => ({ city: l.subArea, parentCity: l.parentCity, nights: l.nights, arrivalAirport: l.arrivalAirport, arrivalTime: l.arrivalTime, departureAirport: l.departureAirport, departureTime: l.departureTime }))
-    : (profile.cityData || profile.cities.map((c,i) => ({ city: c, parentCity: c, nights: profile.nights[i], arrivalAirport: profile.airports?.[i]||'', arrivalTime: profile.arrivalTimes?.[i]||'', departureAirport: '', departureTime: '' })));
+    ? legs.map(l => ({ city: l.subArea, parentCity: l.parentCity, nights: l.nights, arrivalTimeOfDay: l.arrivalTimeOfDay, isFirstLegOfCity: l.isFirstLegOfCity, isLastLegOfCity: l.isLastLegOfCity }))
+    : profile.cities.map((c,i) => ({ city: c, parentCity: c, nights: profile.nights[i], arrivalTimeOfDay: profile.arrivalTimeOfDay?.[i] || '', isFirstLegOfCity: true, isLastLegOfCity: true }));
+  const todLabel = (tod) => ({ morning: '☀️ Morning', midday: '🌤️ Midday', evening: '🌙 Evening' })[tod] || tod || 'unspecified';
   const cityList = src.map((d, i) => {
     const parent = d.parentCity && d.parentCity !== d.city ? ` (sub-area of ${d.parentCity})` : '';
-    const airp = d.arrivalAirport ? ` via ${d.arrivalAirport}` : '';
-    const arr = d.arrivalTime ? `, arrives at ${d.arrivalTime}` : '';
+    const tod = d.arrivalTimeOfDay ? `, arrives ${todLabel(d.arrivalTimeOfDay)}` : '';
     const prevLeg = i > 0 ? src[i-1] : null;
-    const groundTransfer = (prevLeg && !d.arrivalAirport && !d.arrivalTime) ? `, arrives by ground transfer from ${prevLeg.city}` : '';
-    const hasDepAirport = !!d.departureAirport;
-    const latestEnd = d.departureTime ? calcLatestEndTime(d.departureTime, hasDepAirport) : null;
-    const depAirp = d.departureAirport ? ` via ${d.departureAirport}` : '';
-    const dep = d.departureTime
-      ? (hasDepAirport
-        ? `, departure flight at ${d.departureTime}${depAirp} — allow 45min travel to airport + 3h airport check-in, last activity must end by ${latestEnd}`
-        : `, departing at ${d.departureTime} by other means — last activity must end by ${latestEnd}`)
-      : '';
-    return `${d.city}${parent} (${d.nights} nights${airp}${arr}${groundTransfer}${dep})`;
+    const transfer = (prevLeg && !d.arrivalTimeOfDay) ? `, ground transfer from ${prevLeg.city}` : '';
+    return `${d.city}${parent} (${d.nights} nights${tod}${transfer})`;
   }).join(', ');
   const langInstruction = currentLang !== 'en' ? ` Respond entirely in ${langNames[currentLang]} language.` : '';
   const menuBlock = candidatesMenu ? `\n${candidatesMenu}\n` : '';
-  const prompt = (customPrompt || `You are an expert travel planner. Create a detailed hour-by-hour travel itinerary.${menuBlock}\nTRIP: ${cityList} | Start: ${profile.startDate||'unspecified'}\nGROUP: ${profile.adults} adults, ${profile.kids} children\nVIBE: ${profile.tripTypes.join(', ')||'general'} | PACE: ${profile.pace} | BUDGET: ${profile.budget} | STAY: ${profile.accom}\nDIET: ${profile.diet.join(', ')||'none'} | INTERESTS: ${profile.interests.join(', ')||'general'}\nACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | INDOOR BACKUP: ${profile.indoorAlt}\nSTRUCTURE — HARD RULE: Each trip leg above corresponds to ONE sub-area home base. Your returned JSON's "cities" array MUST contain one entry per leg, in the same order, with city.name set to the EXACT sub-area name (e.g. "Ubud", "Seminyak" — NOT the parent region like "Bali"). Set city.country to the actual country. Each city's days MUST use ONLY that sub-area's menu block under AVAILABLE VENUES — never pull a venue listed under a different sub-area. The menu IS the geographic bound; coherence is guaranteed by restricting to one menu per city. Day-1 cases: (1) Airport + arrival time: open with isTravel:true airport→hotel transport (realistic duration — CDG→Paris ~40min, DPS→Ubud ~2hrs). (2) Ground transfer from previous leg: open with isTravel:true ground transfer card (car/shuttle, realistic duration between sub-areas e.g. Ubud→Seminyak ~90min) → hotel check-in → activities. (3) No airport + no arrival time (first leg of trip): start day 1 around 9:00 AM with hotel check-in then activities. Include a hotel check-in event on day 1 of each city picked from THAT sub-area's lodging list. ARRIVAL DAY ENERGY — HARD RULE: If arrival time is after 18:00, day 1 ends with transfer → hotel check-in → one casual dinner WITHIN WALKING DISTANCE of the hotel (same street or immediate neighborhood — the dinner venue's address MUST contain the same town/neighborhood name as the hotel's address) → end of day. Do NOT schedule nightclubs, beach clubs, multi-hour tours, sunrise activities, or ANY car/taxi ride to a different sub-area on a late arrival day. If arrival is after 21:00, go straight from transfer → hotel check-in → end of day (skip dinner unless the hotel has on-site dining). Real travelers are tired and jet-lagged on arrival — reflect that. ARRIVAL FLOW — GOOD vs BAD EXAMPLE. BAD (never do this, even if the menu offers it): DPS landing 20:00 → Alaya Resort Ubud 21:30 → Mozaic Beach Club Seminyak at 22:45 (Ubud hotel + Seminyak dinner = 35 km / 90 minutes apart — forbidden; the hotel address contains "Ubud" and the restaurant address contains "Seminyak"). GOOD: DPS landing 20:00 → transfer → Alaya Resort Ubud check-in 21:30 → dinner at a walkable named restaurant whose address also contains "Ubud" at 22:00 → end of day. Do NOT include flight or transport cards between cities — only within-city travel segments. Departure rule: for each city, if a departure time is provided, plan the last day so all activities end with enough buffer — if a departure airport is also set, end activities at least 3 hours before the departure time (airport transfer + check-in); if no departure airport, end activities at least 1 hour before. Never schedule anything that would conflict with the departure window.\nReturn ONLY valid JSON (no markdown, no backticks):\n{"tripTitle":"evocative title","cities":[{"name":"City","country":"Country","nights":3,"dotColor":"#2D6A4F","days":[{"dayNumber":1,"date":"Mon Jun 10","title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"9:00 AM","type":"sight","tag":"Sightseeing","name":"Name","desc":"One sentence description","details":["📍 Full address","⏱ ~2 hrs","🎟 €15 – book online","📅 Book in advance"],"isTravel":false},{"time":"11:00 AM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)","travelDuration":"22 min","isTravel":true},{"time":"1:00 PM","type":"meal","tag":"Lunch","name":"Restaurant Name","desc":"One sentence description","details":["📍 Full address","⏱ ~1.5 hrs","💶 ~€35/person","📅 Reserve 2 days ahead"],"isTravel":false},{"time":"8:00 PM","type":"hotel","tag":"Hotel","name":"Hotel Name","desc":"One sentence description","details":["📍 Full address","🏨 ~€120/night","🛎 Early check-in available"],"isTravel":false}],"tips":["tip1","tip2","tip3"]}]}]}\nDetails rules: Hotels→["📍 address","🏨 ~€X/night","🛎 check-in note"]; Restaurants→["📍 address","⏱ ~1.5 hrs","💶 ~€X/person","📅 reservation note"]; Sights→["📍 address","⏱ ~X hrs","🎟 ticket info","📅 booking note"]; Travel cards→travelDesc must include full route with line names/stops and cost e.g. "Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)".\nRules: max 6 events per day, full day 8am-10pm, travel segments between every activity, type=sight/meal/travel/hotel/end, distinct dotColor per city. SUB-AREA MENU LOCK — HARD RULE: Each city in the returned JSON is bound to ONE sub-area; all of that city's days MUST use ONLY that sub-area's menu block. Never reference a venue that appears in a different sub-area's menu. If the assigned sub-area's menu lacks a needed category, skip that event rather than crossing into another sub-area's menu. VENUE NAMING — HARD RULE: If an AVAILABLE VENUES list was provided above, every hotel, restaurant, cafe, bar, sight, museum, gym, and park/beach event's "name" field MUST exactly match a name from that list (copy the name verbatim, same spelling and punctuation). Do NOT invent or substitute venues. If a needed category is empty in the list, use the closest listed category (e.g. use a Restaurant for breakfast if Cafes is empty). If NO list was provided, every restaurant, bar, hotel, gym, and attraction must still be a SPECIFIC NAMED PLACE (e.g. "İskele Marin Restaurant", "Develi Karaköy", "Gold's Gym") — never descriptions like "local köfte house" or "a seafood restaurant by the harbour". Sights and parks may use their official name. Every day must include a dinner event (type=meal, tag=Dinner) around 19:00–20:00 — never skip dinner. If nightlife is listed in interests, include 1-2 nightlife events after dinner (bars, clubs, dancing, live music — type=sight, tag=Nightlife) starting around 21:30–22:00 on most days; the flow should be: ...afternoon activity → dinner (~19:30) → nightlife venue (~21:30). If 'active' or 'sport' appears in interests, suggest a specific named fitness venue (gym, yoga studio, fitness center, swimming pool, sports club, or climbing gym) as a standalone event with realistic timing (e.g. morning workout 7:00–8:30 AM).${profile.notes ? `\nAdditional notes from the traveller: ${profile.notes}` : ''}`) + langInstruction;
-  const response = await fetch('/api/itinerary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
+  const prompt = (customPrompt || `You are an expert local tour guide. Build a detailed hour-by-hour day-by-day itinerary of dining, sights, and experiences. There are NO hotels, NO airport transfers, and NO accommodation in this product — focus exclusively on the activity flow of each day.${menuBlock}
+TRIP LEGS: ${cityList}
+TRIP DATES: ${profile.startDate || 'unspecified'} → ${profile.endDate || 'unspecified'}
+GROUP: ${profile.adults} adults, ${profile.kids} children
+VIBE: ${profile.tripTypes.join(', ')||'general'} | PACE: ${profile.pace} | BUDGET: ${profile.budget} (applies to dining and paid activities only)
+DIET: ${profile.diet.join(', ')||'none'} | INTERESTS: ${profile.interests.join(', ')||'general'}
+ACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | INDOOR BACKUP: ${profile.indoorAlt}
+
+STRUCTURE — HARD RULE: Each trip leg corresponds to ONE sub-area home base. Your returned JSON's "cities" array MUST contain one entry per leg, in the same order, with city.name = the EXACT sub-area name (e.g. "Ubud", "Seminyak" — NOT the parent region like "Bali"). Set city.country to the real country. Each city's days MUST use ONLY that sub-area's menu block under AVAILABLE VENUES — never pull a venue from a different sub-area's menu. The menu IS the geographic bound.
+
+DAY 1 OF EACH LEG — derive opening from arrivalTimeOfDay:
+- ☀️ Morning  → first event around 10:00 AM. Full day flow: breakfast/cafe → morning sight → lunch → afternoon sight → dinner → optional bar.
+- 🌤️ Midday   → first event around 1:00 PM. Lunch onward: lunch → afternoon sight → dinner → optional bar. NO breakfast on day 1.
+- 🌙 Evening  → first event around 7:00 PM. Dinner-only flow: dinner → optional bar. Traveler is tired; NO daytime activities, NO breakfast or lunch on day 1.
+- unspecified → treat as Midday.
+
+INTER-LEG TRANSITIONS: when a leg follows another leg in the same trip (its arrivalTimeOfDay is empty), open day 1 with an isTravel:true ground-transfer card (car/shuttle, realistic duration like Ubud→Seminyak ~90min, Marais→Saint-Germain ~25min by metro), then continue with the activity flow.
+
+DAY 2+ OF EACH LEG: always start with breakfast/cafe around 8:30–10:00, then morning sight, lunch, afternoon sight, dinner, optional bar.
+
+LAST DAY: no special departure rule; the user handles their own departure timing in this MVP. Do NOT insert a "head to airport", "check out of hotel", or any departure-related event.
+
+EVENT TYPES — strict whitelist: sight, meal, travel. NO hotel type. NO check-in events. NO airport transfer events. The product has no hotels.
+
+Return ONLY valid JSON (no markdown, no backticks):
+{"tripTitle":"evocative title","cities":[{"name":"Sub-area","country":"Country","nights":3,"dotColor":"#2D6A4F","days":[{"dayNumber":1,"date":"Mon Jun 10","title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"10:00 AM","type":"meal","tag":"Breakfast","name":"Cafe Name","desc":"One sentence description","details":["📍 Full address","💶 ~€8/person"],"isTravel":false},{"time":"11:30 AM","type":"sight","tag":"Sightseeing","name":"Place","desc":"One sentence description","details":["📍 Full address","⏱ ~2 hrs","🎟 €15"],"isTravel":false},{"time":"1:30 PM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 1 → ... (~€2)","travelDuration":"15 min","isTravel":true},{"time":"2:00 PM","type":"meal","tag":"Lunch","name":"Restaurant","desc":"One sentence description","details":["📍 Full address","💶 ~€20/person","📅 Reserve 2 days ahead"],"isTravel":false},{"time":"7:30 PM","type":"meal","tag":"Dinner","name":"Restaurant","desc":"One sentence description","details":["📍 Full address","💶 ~€35/person"],"isTravel":false},{"time":"10:00 PM","type":"sight","tag":"Bar","name":"Bar Name","desc":"One sentence description","details":["📍 Full address","💶 ~€12/cocktail"],"isTravel":false}],"tips":["tip1","tip2","tip3"]}]}]}
+
+Details rules per event type:
+- Restaurants/Cafes/Bars (type=meal or sight tag=Bar) → ["📍 address","⏱ ~X hrs","💶 ~price/person","📅 reservation note"] (drop any field that doesn't apply).
+- Sights/Museums (type=sight) → ["📍 address","⏱ ~X hrs","🎟 ticket info","📅 booking note"].
+- Travel cards (isTravel:true) → travelDesc with full route + cost, e.g. "Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)".
+
+SUB-AREA MENU LOCK — HARD RULE: Each city in the returned JSON is bound to ONE sub-area's menu block. All events for that city must come from that menu only. Never reference a venue from a different sub-area's menu. If the assigned sub-area's menu lacks a needed category (e.g. no cafe), pick a restaurant from the same sub-area for that meal slot.
+
+VENUE NAMING — HARD RULE: Every meal/sight/bar/museum/gym/park event's "name" field MUST exactly match a name in THAT sub-area's menu (verbatim, same spelling and punctuation). Do NOT invent or substitute venues.
+
+VARIETY — HARD RULE: Across the multi-day stay in one sub-area, vary venues. Do NOT reuse the same restaurant or cafe across days. For a 3-day stay in Ubud with 3 lunches, pick three DIFFERENT restaurants (ideally different cuisines and price points). For breakfasts, vary cafes too. The same applies to sights and bars — variety keeps the experience fresh. The candidate menu is shuffled each call, so trust the order shown and lean into less-obvious picks.
+
+DINING:
+- Day 1 with ☀️ Morning arrival → include breakfast, lunch, AND dinner.
+- Day 1 with 🌤️ Midday arrival → lunch + dinner only.
+- Day 1 with 🌙 Evening arrival → dinner only.
+- Day 2+ → breakfast, lunch, AND dinner every day. Never skip dinner.
+
+NIGHTLIFE: if 'night', 'party', 'club', or 'bar' appears in vibe or interests, include a bar after dinner (~21:30–22:00) on most days. Type = sight, tag = Bar.
+
+ACTIVE: if 'active', 'sport', or 'fitness' appears in interests, include a gym/yoga/sports venue as a standalone morning event around 7:00–8:30 on at least one day per leg.
+
+Max 6 events per day. Distinct dotColor per city. Travel cards (isTravel:true) between activities only when actually moving more than ~10 minutes.${profile.notes ? `\nAdditional notes from the traveller: ${profile.notes}` : ''}`) + langInstruction;
+  const response = await fetch('/api/itinerary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, temperature: 1.0 }) });
   if (!response.ok) throw new Error(`Server error: ${response.status}`);
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -1053,83 +1098,72 @@ async function regenDay(dayNum, cityName, cityDayNum) {
   const btn = document.querySelector(`#day-${dayNum} .regen-btn`);
   btn.disabled = true; btn.textContent = t('regenerating');
   const profile = state.tripData.profile;
-  // Day-aware context from the current itinerary state
   const itinCities = state.tripData.itinerary?.cities || [];
   const cityCtx = itinCities.find(c => c.name === cityName);
   const cityDays = cityCtx?.days || [];
-  const isFirstDayOfCity = cityDayNum === 1;
-  const isLastDayOfCity = cityDays.length > 0 && cityDayNum === cityDays.length;
-  // Prefer the stored leg for this sub-area (carries the correct arrival/departure for multi-sub-area trips);
-  // fall back to the user-typed city for single-base trips.
+  const isFirstDayOfLeg = cityDayNum === 1;
+  // Resolve this leg from the stored legs to find arrivalTimeOfDay (only meaningful on day 1).
   const legs = state.tripData.legs || [];
-  const leg = legs.find(l => l.subArea === cityName);
-  let cityInfo;
-  if (leg) {
-    cityInfo = { city: leg.subArea, arrivalTime: leg.arrivalTime, arrivalAirport: leg.arrivalAirport, departureTime: leg.departureTime, departureAirport: leg.departureAirport };
-  } else {
-    const src = profile.cityData || profile.cities.map((c,i) => ({ city: c, arrivalTime: profile.arrivalTimes?.[i]||'', arrivalAirport: profile.airports?.[i]||'', departureTime: '', departureAirport: '' }));
-    cityInfo = src.find(d => d.city === cityName) || {};
-  }
-  // Arrival context (4-tier energy ramp based on arrival hour)
+  const leg = legs.find(l => l.subArea === cityName) || {};
+  const arrivalTod = leg.arrivalTimeOfDay || '';
+  const todLabel = ({ morning: '☀️ Morning', midday: '🌤️ Midday', evening: '🌙 Evening' })[arrivalTod] || '';
+
+  // Day-1 arrival context (only for day 1 of this leg).
   let arrivalContext = '';
-  if (isFirstDayOfCity) {
-    if (cityInfo.arrivalTime) {
-      const h = parseInt(cityInfo.arrivalTime.split(':')[0], 10);
-      const arr12 = to12h(cityInfo.arrivalTime);
-      const airp = cityInfo.arrivalAirport ? ` via ${cityInfo.arrivalAirport}` : '';
-      if (h >= 21) {
-        arrivalContext = ` ARRIVAL DAY — HARD RULE: User arrives at ${arr12}${airp}. After 21:00 arrival: include ONLY the airport→hotel transfer (if airport set) and hotel check-in. SKIP dinner unless the hotel has on-site dining. NO nightclubs, beach clubs, tours, cross-area travel, breakfast, or lunch. Real travelers go straight to bed.`;
-      } else if (h >= 18) {
-        arrivalContext = ` ARRIVAL DAY — HARD RULE: User arrives at ${arr12}${airp}. After 18:00 arrival: transfer (if airport) → hotel check-in → ONE casual dinner WITHIN WALKING DISTANCE of the hotel (dinner venue's address MUST contain the same town/neighborhood name as the hotel's address) → end. NO nightclubs, beach clubs, multi-hour tours, ANY car/taxi ride to a different sub-area, breakfast, or lunch. Real travelers are tired and jet-lagged.`;
-      } else if (h >= 14) {
-        arrivalContext = ` ARRIVAL DAY — HARD RULE: User arrives at ${arr12}${airp}. Start events from ${arr12}: transfer (if airport) → hotel check-in → ONE afternoon activity within a 15-minute radius of the hotel → dinner. NO breakfast, NO lunch, NO cross-area travel.`;
-      } else {
-        arrivalContext = ` ARRIVAL DAY: User arrives at ${arr12}${airp}. Start ALL events from ${arr12}: transfer (if airport) → hotel check-in first → then activities and remaining meals, all within a single neighborhood.`;
-      }
+  if (isFirstDayOfLeg && todLabel) {
+    if (arrivalTod === 'evening') {
+      arrivalContext = ` ARRIVAL DAY — HARD RULE: This is the first day of the leg. Traveler arrives in the EVENING. Include dinner only (~19:00–20:00) and an optional bar after; NO breakfast, NO lunch, NO daytime activities, NO transfer cards.`;
+    } else if (arrivalTod === 'midday') {
+      arrivalContext = ` ARRIVAL DAY — HARD RULE: This is the first day of the leg. Traveler arrives at MIDDAY. Start with lunch (~13:00), then one afternoon sight, dinner (~19:30), optional bar; NO breakfast.`;
     } else {
-      arrivalContext = ` ARRIVAL DAY: Include hotel check-in (type=hotel, tag=Hotel Check-in) as the first event of the day, then activities.`;
+      arrivalContext = ` ARRIVAL DAY — HARD RULE: This is the first day of the leg. Traveler arrives in the MORNING. Full day flow: breakfast/cafe (~10:00) → morning sight → lunch → afternoon sight → dinner → optional bar.`;
     }
   }
-  // Departure context (only if last day of city AND departure time set)
-  let departureContext = '';
-  if (isLastDayOfCity && cityInfo.departureTime) {
-    const depAirp = cityInfo.departureAirport ? ` via ${cityInfo.departureAirport}` : '';
-    const latestEnd = calcLatestEndTime(cityInfo.departureTime, !!cityInfo.departureAirport);
-    const buffer = cityInfo.departureAirport ? '3 hours (airport transfer + check-in)' : '1 hour';
-    departureContext = ` DEPARTURE DAY — HARD RULE: User departs at ${cityInfo.departureTime}${depAirp}. All activities must end by ${latestEnd} (${buffer} buffer). Never schedule anything that would conflict with the departure window.`;
-  }
-  // Continuity hint from adjacent days — avoid duplicating themes/venues
+
+  // Continuity hint — avoid duplicating themes from adjacent days.
   const prevDay = cityDayNum > 1 ? cityDays[cityDayNum - 2] : null;
   const nextDay = cityDayNum < cityDays.length ? cityDays[cityDayNum] : null;
   const adj = [];
   if (prevDay?.title) adj.push(`previous day was "${prevDay.title}"`);
   if (nextDay?.title) adj.push(`next day is "${nextDay.title}"`);
-  const continuityContext = adj.length ? ` CONTINUITY: In this trip, ${adj.join(' and ')} — do not duplicate those venues or themes; pick a distinct sub-area or angle.` : '';
-  // Good/bad arrival example (only for day 1 of a city)
-  const arrivalExample = isFirstDayOfCity ? ` ARRIVAL FLOW — GOOD vs BAD: BAD = airport arrival 20:00 → hotel 21:30 → nightclub in a different sub-area at 22:30 (forbidden: cross-area + high energy after late arrival). GOOD = airport arrival 20:00 → transfer → hotel check-in 21:30 → dinner within 5 min of hotel at 22:00 → end of day.` : '';
+  const continuityContext = adj.length ? ` CONTINUITY: ${adj.join(' and ')} — pick a distinct angle for this day.` : '';
+
+  // Collect every venue name already used in the current itinerary EXCEPT the day being
+  // regenerated, so Claude is forced to pick fresh venues.
+  const excludeVenues = [];
+  itinCities.forEach(c => {
+    c.days?.forEach(d => {
+      if (c.name === cityName && d.dayNumber === cityDayNum) return; // skip the day being replaced
+      d.events?.forEach(ev => { if (!ev.isTravel && ev.name) excludeVenues.push(ev.name); });
+    });
+  });
+  const excludeBlock = excludeVenues.length
+    ? `\n\nDO-NOT-USE LIST (these venues already appear on other days of this trip; pick DIFFERENT ones):\n${[...new Set(excludeVenues)].map(n => `  - ${n}`).join('\n')}\n`
+    : '';
+
   // Conditional interest blocks
-  const nightlifeStr = (profile.interests.some(i => /night/i.test(i)) || profile.tripTypes.some(v => /night/i.test(v))) ? ` If nightlife fits (and this is not a late arrival day), include 1-2 nightlife events after dinner (bars, clubs, dancing, live music — type=sight, tag=Nightlife) starting around 21:30–22:00; flow: afternoon activity → dinner (~19:30) → nightlife venue (~21:30), all in the same sub-area.` : '';
-  const activeStr = profile.interests.some(i => /active|sport/i.test(i)) ? ` Include a specific named fitness venue (gym, yoga studio, pool, sports club) as a standalone morning event.` : '';
-  // Bug 2: capture old hotel name before regeneration so we can propagate a change
-  let oldHotelName = null;
-  if (cityDayNum === 1) {
-    const cityObj0 = state.tripData.itinerary.cities.find(c => c.name === cityName);
-    const day1 = cityObj0?.days?.find(d => d.dayNumber === 1) || cityObj0?.days?.[0];
-    if (day1?.events) { const he = day1.events.find(e => e.type === 'hotel'); if (he?.name) oldHotelName = he.name; }
-    if (!oldHotelName) {
-      const hotelDot = document.querySelector(`#day-${dayNum} .t-dot.hotel`);
-      if (hotelDot) { const nameEl = hotelDot.closest('.t-event')?.querySelector('.t-name'); if (nameEl) oldHotelName = nameEl.textContent.trim(); }
-    }
-  }
-  // Grounded menu for this city (only if candidates were fetched)
+  const nightlifeStr = (profile.interests.some(i => /night/i.test(i)) || profile.tripTypes.some(v => /night|party/i.test(v))) ? ` Include a bar after dinner (type=sight, tag=Bar) around 21:30–22:00 unless this is an evening-arrival day.` : '';
+  const activeStr = profile.interests.some(i => /active|sport/i.test(i)) ? ` Include a gym/yoga venue as a standalone morning event around 7:00–8:30 if it fits.` : '';
+
+  // Sub-area-scoped menu (shuffled by formatCityMenu).
   const cityMenuBody = formatCityMenu(cityName, state.candidates?.[cityName]);
-  const cityMenuBlock = cityMenuBody ? `\n\nAVAILABLE VENUES for ${cityName} — pick ONLY names from this list. Copy each venue name EXACTLY as written (same spelling and punctuation). Never invent venues, never substitute. For every hotel, restaurant, cafe, bar, sight, museum, gym, and park event, the "name" field MUST match one of the names below.\n\n${cityMenuBody}\n` : '';
-  const prompt = `You are an expert travel planner. Regenerate a completely different Day ${cityDayNum} in ${cityName}.${arrivalContext}${departureContext}${continuityContext}${cityMenuBlock}
-PROFILE: ${profile.adults} adults, ${profile.kids} kids | BUDGET: ${profile.budget} | VIBE: ${profile.tripTypes.join(', ')||'general'} | PACE: ${profile.pace} | STAY: ${profile.accom} | DIET: ${profile.diet.join(', ')||'none'} | INTERESTS: ${profile.interests.join(', ')||'general'} | ACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | INDOOR BACKUP: ${profile.indoorAlt}
+  const cityMenuBlock = cityMenuBody ? `\n\nAVAILABLE VENUES for ${cityName} — pick ONLY names from this list (verbatim spelling). NEVER invent or substitute. For every meal/sight/bar/museum/gym/park event, "name" MUST match a name below.\n\n${cityMenuBody}\n` : '';
+
+  const prompt = `You are an expert local tour guide. Regenerate a completely different Day ${cityDayNum} in ${cityName}.${arrivalContext}${continuityContext}${cityMenuBlock}${excludeBlock}
+PROFILE: ${profile.adults} adults, ${profile.kids} kids | BUDGET: ${profile.budget} | VIBE: ${profile.tripTypes.join(', ')||'general'} | PACE: ${profile.pace} | DIET: ${profile.diet.join(', ')||'none'} | INTERESTS: ${profile.interests.join(', ')||'general'} | ACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | INDOOR BACKUP: ${profile.indoorAlt}
+
+EVENT TYPES — strict whitelist: sight, meal, travel. NO hotel, NO airport transfers, NO check-in events. The product has no hotels.
+
 Return ONLY valid JSON (no markdown) matching this exact structure:
-{"title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"9:00 AM","type":"sight","tag":"Sightseeing","name":"Place name","desc":"One sentence description","details":["📍 Full address","⏱ ~2 hrs","🎟 €15 – book online","📅 Book in advance"],"isTravel":false},{"time":"10:30 AM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 1 → City Center (~€2)","travelDuration":"15 min","isTravel":true},{"time":"1:00 PM","type":"meal","tag":"Lunch","name":"Restaurant Name","desc":"One sentence description","details":["📍 Full address","⏱ ~1.5 hrs","💶 ~€35/person","📅 Reserve 2 days ahead"],"isTravel":false},{"time":"8:00 PM","type":"hotel","tag":"Hotel","name":"Hotel Name","desc":"One sentence description","details":["📍 Full address","🏨 ~€120/night","🛎 Early check-in available"],"isTravel":false}],"tips":["tip1","tip2","tip3"]}
-Details rules: Hotels→["📍 address","🏨 ~€X/night","🛎 check-in note"]; Restaurants→["📍 address","⏱ ~1.5 hrs","💶 ~€X/person","📅 reservation note"]; Sights→["📍 address","⏱ ~X hrs","🎟 ticket info","📅 booking note"]; Travel cards→travelDesc must include full route with line names/stops and cost.
-Event types: sight, meal, hotel, travel. For travel segments set isTravel:true and include travelMode (emoji), travelDesc (route + cost), travelDuration. For all other events set isTravel:false with type/tag/name/desc/details fields. Include travel segments between activities. Max 6 events per day, full day 8am-10pm (unless overridden by the arrival/departure context above). Always include dinner (type=meal, tag=Dinner) around 19:00–20:00 — never skip dinner unless the arrival/departure context explicitly says so. SUB-AREA MENU LOCK — HARD RULE: This day is anchored to the sub-area "${cityName}". EVERY event for this day MUST come from the AVAILABLE VENUES block for ${cityName} above (if one is shown). Never pick a venue from a different sub-area's menu, EVEN IF you know of a famous place nearby. If the menu lacks a needed category, skip that event — do not cross into another sub-area. For a day's hotel event, use the existing hotel from the current itinerary unless regenerating day 1 of this sub-area. VENUE NAMING — HARD RULE: If an AVAILABLE VENUES list was provided above, every hotel/restaurant/cafe/bar/sight/museum/gym/park event's "name" field MUST exactly match a name from that list (verbatim, same spelling and punctuation). Do NOT invent or substitute. If a needed category is empty in the list, use the closest listed category. If NO list was provided, every venue must still be a SPECIFIC NAMED PLACE (e.g. "İskele Marin Restaurant", "Develi", "Gold's Gym") — never descriptions like "local köfte house" or "local gym".${nightlifeStr}${activeStr}${arrivalExample}${profile.notes ? `\nAdditional notes from the traveller: ${profile.notes}` : ''}`;
+{"title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"10:00 AM","type":"meal","tag":"Breakfast","name":"Cafe Name","desc":"One sentence","details":["📍 Address","💶 ~€8/person"],"isTravel":false},{"time":"11:30 AM","type":"sight","tag":"Sightseeing","name":"Place","desc":"One sentence","details":["📍 Address","⏱ ~2 hrs","🎟 €15"],"isTravel":false},{"time":"1:30 PM","type":"meal","tag":"Lunch","name":"Restaurant","desc":"One sentence","details":["📍 Address","💶 ~€20/person"],"isTravel":false},{"time":"7:30 PM","type":"meal","tag":"Dinner","name":"Restaurant","desc":"One sentence","details":["📍 Address","💶 ~€35/person"],"isTravel":false},{"time":"10:00 PM","type":"sight","tag":"Bar","name":"Bar Name","desc":"One sentence","details":["📍 Address","💶 ~€12/cocktail"],"isTravel":false}],"tips":["tip1","tip2","tip3"]}
+
+Details rules: Restaurants/Cafes/Bars→["📍 address","⏱ ~X hrs","💶 ~price/person","📅 reservation note"]; Sights/Museums→["📍 address","⏱ ~X hrs","🎟 ticket info","📅 booking note"]; Travel cards→travelDesc with route + cost.
+
+VARIETY — HARD RULE: Pick venues NOT in the DO-NOT-USE LIST above. Lean into less-obvious picks from the menu (it has been shuffled). Even within this single day, vary cuisine and price points across meals.
+
+SUB-AREA MENU LOCK — HARD RULE: All events come from the menu for ${cityName} only. Never reference a venue outside this menu.
+
+DINING: Day 1 evening-arrival → dinner only. Day 1 midday-arrival → lunch + dinner. Day 1 morning-arrival OR Day 2+ → breakfast + lunch + dinner.${nightlifeStr}${activeStr}${profile.notes ? `\nAdditional notes from the traveller: ${profile.notes}` : ''}`;
   try {
     const newDay = await callClaude(profile, prompt);
     const section = document.getElementById(`day-${dayNum}`);
@@ -1156,26 +1190,6 @@ Event types: sight, meal, hotel, travel. For travel segments set isTravel:true a
       if (newDay.tips) dayObjUpd.tips = newDay.tips;
     }
     if (state.candidates) enrichFromCandidates(state.tripData.itinerary, state.candidates);
-    // Bug 2: propagate new hotel name to all other day cards
-    if (cityDayNum === 1 && oldHotelName) {
-      const newHotelEv = events.find(e => e.type === 'hotel');
-      const newHotelName = newHotelEv?.name;
-      if (newHotelName && newHotelName !== oldHotelName) {
-        const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const encOld = encodeURIComponent(oldHotelName);
-        const encNew = encodeURIComponent(newHotelName);
-        document.querySelectorAll('.day-section').forEach(sec => {
-          if (sec.id === `day-${dayNum}`) return;
-          let html = sec.innerHTML;
-          if (encOld !== oldHotelName) html = html.replace(new RegExp(escRe(encOld), 'g'), encNew);
-          html = html.replace(new RegExp(escRe(oldHotelName), 'gi'), newHotelName);
-          sec.innerHTML = html;
-        });
-        // Keep state in sync so a second regen on day 1 sees the updated name
-        const day1 = cityObj?.days?.find(d => d.dayNumber === 1) || cityObj?.days?.[0];
-        if (day1?.events) { const he = day1.events.find(e => e.type === 'hotel'); if (he) he.name = newHotelName; }
-      }
-    }
     btn.disabled = false; btn.textContent = t('regenerated');
     setTimeout(() => { btn.textContent = t('regen_day'); }, 2000);
   } catch(e) { btn.disabled = false; btn.textContent = t('regen_day'); alert(t('alert_regen_error')); }
