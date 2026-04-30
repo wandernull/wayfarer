@@ -95,7 +95,7 @@ rule, arrival-time-of-day tiebreaker.
 Examples of valid overrides:
 - "we're fine with stairs" → override accessibility filter.
 - "our teens are cool with bars" → override kids→no-nightlife filter.
-- "1 night each in 4 sub-areas, we want variety" → override 2-night minimum.
+- "1 night each in 4 sub-areas, we want variety" → override the night-minimum rule.
 - "we love touristy chaos" → override local-only filter.
 - "nightlife please, I know the vibe says romantic" → override relevance filter.
 - "Ubud for all nights" → override variety/differentiation; return 1 option.
@@ -195,6 +195,38 @@ romantic/nature. NOT: Ubud (nature) vs. Seminyak (party).
 If only ONE theme family is compatible with the profile AND only one
 sensible sub-area exists within that family, return EXACTLY ONE option —
 do not invent fake variety.
+
+────── SUB-AREA NIGHT MINIMUMS ──────
+The minimum nights per sub-area depends on how spread out the destination is.
+Be deliberate about this; do NOT default to 2 sub-areas for every multi-night
+trip without checking which category the destination falls into.
+
+REGIONAL / ISLAND destinations — sub-areas are >30 minutes apart by transit.
+Examples: Bali (Ubud/Seminyak/Canggu/Uluwatu/Sanur/Sidemen/Amed), Oahu
+(Waikiki/North Shore/Kailua), Phuket (Patong/Phuket Town/Kata), Tuscany,
+Tenerife, Crete, Sicily, Big Island Hawaii.
+→ MINIMUM 2 NIGHTS per sub-area. Moving every night here means long drives,
+  re-packing, and exhausted travelers. A 5-night trip = at most 2 sub-areas
+  (e.g. 3+2 or 2+3); a 6-night trip = at most 3 (2+2+2).
+
+DENSE CITY destinations — sub-areas (neighborhoods) are <30 minutes apart by
+metro, walking, or short ride. Examples: Berlin (Prenzlauer Berg/Kreuzberg/
+Mitte/Friedrichshain/Charlottenburg), Paris (Marais/Saint-Germain/Montmartre/
+Latin Quarter), NYC (Midtown/Lower Manhattan/Brooklyn/Williamsburg), London
+(Soho/Shoreditch/Notting Hill/Camden), Tokyo (Shibuya/Shinjuku/Asakusa/Ginza),
+Istanbul (Sultanahmet/Beyoğlu/Kadıköy), Rome (Centro Storico/Trastevere/Monti),
+LA (Santa Monica/Hollywood/Downtown/Venice), Madrid (Centro/Malasaña/Chueca).
+→ MINIMUM 1 NIGHT per sub-area is acceptable. A 5-night Berlin trip CAN be
+  3+1+1, 2+2+1, or 2+1+1+1 when the city genuinely supports 3-4 distinct
+  flavors that all match the user's interests. Do NOT artificially cap a
+  dense-city option at 2 sub-areas just because that's "safer".
+
+Bias toward 2+ night stays when only one or two themes are compatible (less
+need to fragment). Bias toward more-and-shorter stays for "Packed" pace and
+when the user's interests genuinely span 3+ neighborhoods of a dense city.
+
+Trips of 1-2 nights total → always exactly 1 sub-area per option, regardless
+of destination type.
 
 ────── OUTPUT SHAPE ──────
 If distinct sub-areas exist and multiple are theme-compatible, generate 2-3
