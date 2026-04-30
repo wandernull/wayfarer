@@ -368,7 +368,7 @@ input::placeholder { color: var(--step-inactive); }
       <div class="chip selected" onclick="singleChip(this,'budget')" data-i18n="budget_chip_mid">$$ Mid-range</div>
       <div class="chip" onclick="singleChip(this,'budget')" data-i18n="budget_chip_high">$$$ Luxury</div>
     </div>
-    <div class="nav-row"><span></span><button class="btn-next" onclick="goTo(1)" data-i18n="continue_btn">Continue →</button></div>
+    <div class="nav-row"><span></span><button class="btn-next" onclick="if(validateStep0())goTo(1)" data-i18n="continue_btn">Continue →</button></div>
   </div>
   <div class="card" id="step-1" style="display:none;">
     <div class="step-badge" data-i18n="step2_badge" data-i18n-upper>Step 2 · Your Group</div>
@@ -925,22 +925,20 @@ function formatCandidatesMenu(candidates) {
   if (!cityBlocks.length) return '';
   return `AVAILABLE VENUES — pick ONLY names from this list. Copy each venue name EXACTLY as written (matching spelling, punctuation, and language). Never invent venues, never substitute. For each hotel/restaurant/cafe/bar/sight/museum/gym/park event, the event's "name" field MUST match one of the names below.\n\n${cityBlocks.join('\n\n')}\n`;
 }
-async function startGeneration() {
+function validateStep0() {
   const profile = getTripProfile();
-  if (!profile.cities.length) { alert(t('alert_add_city')); return; }
-  // Validate per-city dates before doing any work.
+  if (!profile.cities.length) { alert(t('alert_add_city')); return false; }
   for (let i = 0; i < profile.cities.length; i++) {
     const s = profile.cityStartDates?.[i] || '';
     const e = profile.cityEndDates?.[i] || '';
-    if (!s || !e) {
-      alert(t('alert_dates_required'));
-      return;
-    }
-    if (e <= s) {
-      alert(t('alert_end_before_start').replace('{city}', profile.cities[i]));
-      return;
-    }
+    if (!s || !e) { alert(t('alert_dates_required')); return false; }
+    if (e <= s) { alert(t('alert_end_before_start').replace('{city}', profile.cities[i])); return false; }
   }
+  return true;
+}
+async function startGeneration() {
+  if (!validateStep0()) return;
+  const profile = getTripProfile();
   document.getElementById('onboarding-view').style.display = 'none';
   document.getElementById('onboarding-progress').style.display = 'none';
   document.getElementById('loading-view').style.display = 'flex';
