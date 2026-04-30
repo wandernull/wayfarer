@@ -16,7 +16,8 @@
 }
 body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text-primary); min-height: 100vh; }
 #app-header { position: fixed; top: 0; left: 0; right: 0; z-index: 200; height: var(--header-h); background: rgba(247,245,242,0.94); backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 36px; gap: 20px; }
-.logo { font-family: 'DM Serif Display', serif; font-size: 21px; color: var(--text-primary); white-space: nowrap; flex-shrink: 0; }
+.logo { font-family: 'DM Serif Display', serif; font-size: 21px; color: var(--text-primary); white-space: nowrap; flex-shrink: 0; text-decoration: none; cursor: pointer; transition: opacity 0.15s; }
+.logo:hover { opacity: 0.75; }
 .logo span { color: var(--accent); font-style: italic; }
 #onboarding-progress { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--step-inactive); transition: all 0.3s; }
@@ -303,7 +304,7 @@ input::placeholder { color: var(--step-inactive); }
 </head>
 <body>
 <header id="app-header">
-  <div class="logo">Jou<span>nee</span></div>
+  <a href="/" class="logo" aria-label="Home">Jou<span>nee</span></a>
   <div id="onboarding-progress">
     <div class="step-dot active" id="dot-0"></div>
     <div class="step-dot" id="dot-1"></div>
@@ -927,6 +928,19 @@ function formatCandidatesMenu(candidates) {
 async function startGeneration() {
   const profile = getTripProfile();
   if (!profile.cities.length) { alert(t('alert_add_city')); return; }
+  // Validate per-city dates before doing any work.
+  for (let i = 0; i < profile.cities.length; i++) {
+    const s = profile.cityStartDates?.[i] || '';
+    const e = profile.cityEndDates?.[i] || '';
+    if (!s || !e) {
+      alert(t('alert_dates_required'));
+      return;
+    }
+    if (e <= s) {
+      alert(t('alert_end_before_start').replace('{city}', profile.cities[i]));
+      return;
+    }
+  }
   document.getElementById('onboarding-view').style.display = 'none';
   document.getElementById('onboarding-progress').style.display = 'none';
   document.getElementById('loading-view').style.display = 'flex';
@@ -1398,6 +1412,28 @@ function showAcDropdown(input, results, onSelect) {
 }
 function closeAcDropdown(input) { input.parentElement.querySelector('.ac-dropdown')?.remove(); }
 document.querySelectorAll('.city-input').forEach(initAutocomplete);
+// Date sanity: when a start date is chosen, set the matching end date's
+// min to start+1 day; bump end up if it would now be invalid. Uses event
+// delegation so dynamically added city rows are covered automatically.
+document.getElementById('cityList')?.addEventListener('change', (e) => {
+  const target = e.target;
+  if (!target?.classList) return;
+  const row = target.closest('.city-row');
+  if (!row) return;
+  if (target.classList.contains('city-start-date') && target.value) {
+    const endEl = row.querySelector('.city-end-date');
+    if (!endEl) return;
+    const min = addDaysISO(target.value, 1);
+    endEl.min = min;
+    if (endEl.value && endEl.value <= target.value) endEl.value = min;
+  }
+  if (target.classList.contains('city-end-date') && target.value) {
+    const startEl = row.querySelector('.city-start-date');
+    if (startEl?.value && target.value <= startEl.value) {
+      target.value = addDaysISO(startEl.value, 1);
+    }
+  }
+});
 let _airportData = null;
 let _airportDataPromise = null;
 function loadAirportData() {
