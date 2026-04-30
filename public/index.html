@@ -74,9 +74,12 @@ input::placeholder { color: var(--step-inactive); }
 .city-row + .city-row { margin-top: 12px; }
 .city-row .remove-btn { position: absolute; top: 10px; right: 12px; height: 30px; width: 30px; border: none; background: none; color: var(--text-secondary); font-size: 20px; cursor: pointer; border-radius: 6px; transition: color 0.2s, background 0.2s; display: flex; align-items: center; justify-content: center; z-index: 2; }
 .city-row .remove-btn:hover { color: var(--danger, #c0392b); background: #fdf2f2; }
-.city-row-field { margin-bottom: 14px; padding-right: 36px; }
 .city-row-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); text-transform: uppercase; display: block; margin-bottom: 6px; }
-.city-flight-grid { display: grid; grid-template-columns: minmax(120px, 1fr) 1fr 1fr; gap: 12px; align-items: end; }
+.city-row-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px 12px; }
+.city-row-grid .gc-city { grid-column: span 8; padding-right: 36px; }
+.city-row-grid .gc-arrival { grid-column: span 4; }
+.city-row-grid .gc-start { grid-column: span 6; }
+.city-row-grid .gc-end { grid-column: span 6; }
 .flight-block-inputs { display: grid; grid-template-columns: 1fr 100px; gap: 8px; }
 .flight-block-inputs .airport-select,
 .flight-block-inputs input[type="time"] { width: 100%; min-width: 0; padding: 12px 10px; }
@@ -250,7 +253,11 @@ input::placeholder { color: var(--step-inactive); }
 .ac-item:hover, .ac-item.ac-active { background: var(--accent-light); color: var(--accent); }
 @media (max-width: 640px) {
   .city-row { padding: 14px 16px; }
-  .city-flight-grid { grid-template-columns: 1fr; gap: 10px; }
+  .city-row-grid .gc-city,
+  .city-row-grid .gc-arrival,
+  .city-row-grid .gc-start,
+  .city-row-grid .gc-end { grid-column: span 12; }
+  .city-row-grid .gc-city { padding-right: 0; }
   .flight-block-inputs { grid-template-columns: 1fr 90px; gap: 6px; }
 }
 
@@ -329,12 +336,12 @@ input::placeholder { color: var(--step-inactive); }
     <div class="city-list" id="cityList">
       <div class="city-row">
         <button class="remove-btn" onclick="removeCity(this)" aria-label="Remove city">×</button>
-        <div class="city-row-field">
-          <span class="city-row-label" data-i18n="city_country_header">City, Country</span>
-          <div class="autocomplete-wrap"><input type="text" placeholder="e.g. Paris, France" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder"/></div>
-        </div>
-        <div class="city-flight-grid">
-          <div class="arrival-tod-block">
+        <div class="city-row-grid">
+          <div class="gc-city">
+            <span class="city-row-label" data-i18n="city_country_header">City, Country</span>
+            <div class="autocomplete-wrap"><input type="text" placeholder="e.g. Paris, France" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder"/></div>
+          </div>
+          <div class="gc-arrival">
             <span class="city-row-label" data-i18n="arrival_when">Arrival</span>
             <select class="arrival-tod-select">
               <option value="morning" data-i18n="tod_morning">☀️ Morning</option>
@@ -342,11 +349,11 @@ input::placeholder { color: var(--step-inactive); }
               <option value="evening" data-i18n="tod_evening">🌙 Evening</option>
             </select>
           </div>
-          <div class="city-date-block">
+          <div class="gc-start">
             <span class="city-row-label" data-i18n="start_date">Start date</span>
             <input type="date" class="city-start-date city-date-input"/>
           </div>
-          <div class="city-date-block">
+          <div class="gc-end">
             <span class="city-row-label" data-i18n="end_date">End date</span>
             <input type="date" class="city-end-date city-date-input"/>
           </div>
@@ -498,12 +505,12 @@ function updateDots() {
 function addCity() {
   const row = document.createElement('div'); row.className = 'city-row';
   row.innerHTML = `<button class="remove-btn" onclick="removeCity(this)" aria-label="Remove city">×</button>
-    <div class="city-row-field">
-      <span class="city-row-label" data-i18n="city_country_header">${t('city_country_header')}</span>
-      <div class="autocomplete-wrap"><input type="text" placeholder="${t('city_placeholder_2')}" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder_2"/></div>
-    </div>
-    <div class="city-flight-grid">
-      <div class="arrival-tod-block">
+    <div class="city-row-grid">
+      <div class="gc-city">
+        <span class="city-row-label" data-i18n="city_country_header">${t('city_country_header')}</span>
+        <div class="autocomplete-wrap"><input type="text" placeholder="${t('city_placeholder_2')}" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder_2"/></div>
+      </div>
+      <div class="gc-arrival">
         <span class="city-row-label" data-i18n="arrival_when">${t('arrival_when')}</span>
         <select class="arrival-tod-select">
           <option value="morning" data-i18n="tod_morning">${t('tod_morning')}</option>
@@ -511,11 +518,11 @@ function addCity() {
           <option value="evening" data-i18n="tod_evening">${t('tod_evening')}</option>
         </select>
       </div>
-      <div class="city-date-block">
+      <div class="gc-start">
         <span class="city-row-label" data-i18n="start_date">${t('start_date')}</span>
         <input type="date" class="city-start-date city-date-input"/>
       </div>
-      <div class="city-date-block">
+      <div class="gc-end">
         <span class="city-row-label" data-i18n="end_date">${t('end_date')}</span>
         <input type="date" class="city-end-date city-date-input"/>
       </div>
