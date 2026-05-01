@@ -1,0 +1,7 @@
+name = "wayfarer"
+compatibility_date = "2024-09-01"
+pages_build_output_dir = "public"
+
+[[kv_namespaces]]
+binding = "JOURNEYS"
+id = "89af90c14a6149e0a2bc52fd2516b36f"

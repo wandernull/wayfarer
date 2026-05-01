@@ -164,7 +164,7 @@ input::placeholder { color: var(--step-inactive); }
 .sb-city-header { display: flex; align-items: center; gap: 8px; padding: 10px 22px 5px; }
 .sb-city-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .sb-city-name { font-size: 13px; font-weight: 600; }
-.sb-city-nights { font-size: 11px; color: var(--text-secondary); margin-left: auto; }
+.sb-city-nights, .sb-city-days { font-size: 11px; color: var(--text-secondary); margin-left: auto; }
 .sb-day { display: flex; align-items: center; gap: 8px; padding: 7px 22px 7px 38px; font-size: 13px; color: var(--text-secondary); cursor: pointer; border-left: 2px solid transparent; transition: all 0.15s; text-decoration: none; }
 .sb-day:hover { background: var(--bg); color: var(--text-primary); }
 .sb-day.active { background: var(--accent-light); color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
@@ -333,7 +333,7 @@ input::placeholder { color: var(--step-inactive); }
   <div class="card" id="step-0">
     <div class="step-badge" data-i18n="step1_badge" data-i18n-upper>Step 1 · Destination</div>
     <h2 data-i18n="step1_h2">Where are you headed?</h2>
-    <p class="subtitle" data-i18n="step1_subtitle">Add one or more cities. Set how many nights and roughly when you'll arrive.</p>
+    <p class="subtitle" data-i18n="step1_subtitle">Add one or more cities. Pick the dates and roughly when you'll arrive.</p>
     <div class="city-list" id="cityList">
       <div class="city-row">
         <button class="remove-btn" onclick="removeCity(this)" aria-label="Remove city">×</button>
@@ -435,6 +435,14 @@ input::placeholder { color: var(--step-inactive); }
     </div>
     <button class="generate-btn" id="generateBtn" onclick="startGeneration()" data-i18n="generate_btn">✦ Generate My Itinerary</button>
     <div class="nav-row" style="margin-top:14px;padding-top:14px;"><button class="btn-back" onclick="goTo(1)" data-i18n="back_btn">← Back</button><span></span></div>
+  </div>
+</div>
+<div id="journey-404-view" style="display:none;padding-top:var(--header-h);min-height:100vh;align-items:center;justify-content:center;">
+  <div class="card" style="max-width:520px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:8px;">🧭</div>
+    <h2 data-i18n="journey_404_title">Trip not found</h2>
+    <p class="subtitle" data-i18n="journey_404_subtitle">This link may have expired (free trips expire after 30 days) or never existed.</p>
+    <button class="btn-next" onclick="window.location.href='/'" data-i18n="journey_404_home_btn">Plan a new trip</button>
   </div>
 </div>
 <div id="loading-view">
@@ -558,13 +566,14 @@ function to12h(t) {
   const h12 = h % 12 || 12;
   return `${h12}:${String(m).padStart(2, '0')} ${period}`;
 }
-function nightsBetween(startISO, endISO) {
+function daysBetween(startISO, endISO) {
   if (!startISO || !endISO) return 0;
   const a = new Date(startISO + 'T00:00:00');
   const b = new Date(endISO + 'T00:00:00');
   if (isNaN(a.getTime()) || isNaN(b.getTime())) return 0;
-  const diff = Math.round((b - a) / 86400000);
-  return Math.max(0, diff);
+  // Inclusive day count: May 12 → May 15 = 4 activity days.
+  const diff = Math.round((b - a) / 86400000) + 1;
+  return Math.max(1, diff);
 }
 function addDaysISO(startISO, days) {
   if (!startISO) return '';
@@ -582,14 +591,14 @@ function getTripProfile() {
       city: row.querySelector('.city-input')?.value.trim() || '',
       cityStartDate,
       cityEndDate,
-      nights: nightsBetween(cityStartDate, cityEndDate),
+      days: daysBetween(cityStartDate, cityEndDate),
       arrivalTimeOfDay: row.querySelector('.arrival-tod-select')?.value || 'midday'
     };
   }).filter(d => d.city);
   return {
     cityData,
     cities: cityData.map(d => d.city),
-    nights: cityData.map(d => d.nights),
+    days: cityData.map(d => d.days),
     cityStartDates: cityData.map(d => d.cityStartDate),
     cityEndDates: cityData.map(d => d.cityEndDate),
     arrivalTimeOfDay: cityData.map(d => d.arrivalTimeOfDay),
@@ -613,14 +622,14 @@ function buildSummary() {
   const p = getTripProfile();
   const routeHtml = p.cities.length
     ? p.cities.map((c, i) => {
-        const nights = p.nights[i];
+        const days = p.days[i];
         const arrT = p.arrivalTimes?.[i] || '';
         const arrA = p.airports?.[i] || '';
         const depT = p.cityData?.[i]?.departureTime || '';
         const depA = p.cityData?.[i]?.departureAirport || '';
         const arrIcon = p.flightsBooked === false ? '⏱' : '🛬';
         const depIcon = p.flightsBooked === false ? '⏱' : '🛫';
-        const legParts = [`${nights}n`];
+        const legParts = [`${days}d`];
         if (arrT) legParts.push(`${arrIcon} ${arrT}${arrA ? ' ' + arrA : ''}`);
         if (depT) legParts.push(`${depIcon} ${depT}${depA ? ' ' + depA : ''}`);
         return `${i > 0 ? '<span class="route-arrow">→</span>' : ''}<span class="city-tag">${c || '—'} <span style="opacity:.6;font-weight:400">${legParts.join(' · ')}</span></span>`;
@@ -628,7 +637,7 @@ function buildSummary() {
     : `<span style="color:var(--text-secondary);font-size:13px;">${t('sum_no_cities')}</span>`;
   document.getElementById('summaryRoute').innerHTML = routeHtml;
 
-  const totalNights = p.nights.reduce((a,b)=>a+b,0);
+  const totalDays = p.days.reduce((a,b)=>a+b,0);
   const groupStr = `${p.adults} ${p.adults>1?t('adults_p'):t('adult_s')}${p.kids>0?`, ${p.kids} ${p.kids>1?t('kids_p'):t('kid_s')}`:' '+t('no_kids')}`;
 
   let startDateStr = '—';
@@ -655,7 +664,7 @@ function buildSummary() {
 
   document.getElementById('summaryGrid').innerHTML =
     `<div class="summary-item"><div class="s-label">${u(t('sum_group'))}</div><div class="s-value">${groupStr}</div></div>
-    <div class="summary-item"><div class="s-label">${u(t('sum_duration'))}</div><div class="s-value">${totalNights} ${t('nights_unit')}</div></div>
+    <div class="summary-item"><div class="s-label">${u(t('sum_duration'))}</div><div class="s-value">${totalDays} ${t('days_unit')}</div></div>
     <div class="summary-item"><div class="s-label">${u(t('start_date'))}</div><div class="s-value">${startDateStr}</div></div>
     <div class="summary-item"><div class="s-label">${u(t('sum_flights'))}</div><div class="s-value">${flightsHtml}</div></div>
     <div class="summary-item"><div class="s-label">${u(t('sum_budget'))}</div><div class="s-value">${p.budget}</div></div>
@@ -717,7 +726,7 @@ function pickBestOption(options, profile) {
   scored.sort((a, b) => b.score - a.score);
   return scored[0];
 }
-async function fetchPlanForCity(cityName, nights, profile, extras = {}) {
+async function fetchPlanForCity(cityName, days, profile, extras = {}) {
   const rawNotes = profile.notes || '';
   const notesCapped = rawNotes.slice(0, 500);
   if (rawNotes.length > 500) console.warn(`[plan] notes truncated from ${rawNotes.length} to 500 chars`);
@@ -727,7 +736,7 @@ async function fetchPlanForCity(cityName, nights, profile, extras = {}) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         city: cityName,
-        nights,
+        days,
         interests: profile.interests || [],
         tripTypes: profile.tripTypes || [],
         pace: profile.pace,
@@ -771,7 +780,7 @@ function buildLegs(profile, planByCity) {
       legs.push({
         parentCity: cityName,
         subArea: cityName,
-        nights: profile.nights?.[ci] || 0,
+        days: profile.days?.[ci] || 0,
         arrivalTimeOfDay: userArrTod,
         legStartDate: cityStart,
         legEndDate: cityEnd,
@@ -780,24 +789,26 @@ function buildLegs(profile, planByCity) {
       });
       return;
     }
+    // Walk the cursor inclusively: a leg of N days that starts on May 12
+    // ends on May 12 + (N - 1). The next leg starts on May 12 + N.
     let cursor = cityStart;
     picked.plan.forEach((p, pi) => {
       const isFirst = pi === 0;
       const isLast = pi === picked.plan.length - 1;
-      const nightsThis = Number(p.nights) || 0;
+      const daysThis = Number(p.days) || 0;
       const legStart = cursor || '';
-      const legEnd = isLast ? cityEnd : addDaysISO(cursor, nightsThis);
+      const legEnd = addDaysISO(legStart, Math.max(0, daysThis - 1));
       legs.push({
         parentCity: cityName,
         subArea: p.subArea,
-        nights: nightsThis,
+        days: daysThis,
         arrivalTimeOfDay: isFirst ? userArrTod : '',
         legStartDate: legStart,
         legEndDate: legEnd,
         isFirstLegOfCity: isFirst,
         isLastLegOfCity: isLast
       });
-      cursor = legEnd;
+      cursor = addDaysISO(legStart, daysThis);
     });
   });
   return legs;
@@ -953,13 +964,13 @@ async function startGeneration() {
     // 1. Plan per city (in parallel). Each city gets its own themed options; we score + pick.
     const planByCity = {};
     await Promise.all(profile.cities.map(async (cityName, ci) => {
-      const nights = profile.nights?.[ci] || 0;
+      const days = profile.days?.[ci] || 0;
       const extras = {
         arrivalTimeOfDay: profile.arrivalTimeOfDay?.[ci] || '',
         cityStartDate: profile.cityStartDates?.[ci] || '',
         cityEndDate: profile.cityEndDates?.[ci] || ''
       };
-      const planResp = await fetchPlanForCity(cityName, nights, profile, extras);
+      const planResp = await fetchPlanForCity(cityName, days, profile, extras);
       if (!planResp || !planResp.options?.length) return;
       const ranked = planResp.options
         .map(o => ({ option: o, score: scoreOption(o, profile) }))
@@ -978,7 +989,7 @@ async function startGeneration() {
         title: option.title,
         score: score.toFixed(2),
         themes: (option.themes || []).join(', '),
-        plan: (option.plan || []).map(p => `${p.subArea}(${p.nights}n)`).join(' → ')
+        plan: (option.plan || []).map(p => `${p.subArea}(${p.days}d)`).join(' → ')
       }));
       console.group(`[plan] ${cityName} — picked "${best.option.title}" (score ${best.score.toFixed(2)})`);
       console.table(rows);
@@ -987,7 +998,7 @@ async function startGeneration() {
         const tag = option === best.option ? ' ✓ PICKED' : '';
         console.log(`${option.id}${tag}:`);
         (option.plan || []).forEach(p => {
-          console.log(`  • ${p.subArea} (${p.nights}n) — ${p.rationale || '(no rationale)'}`);
+          console.log(`  • ${p.subArea} (${p.days}d) — ${p.rationale || '(no rationale)'}`);
         });
       });
       console.groupEnd();
@@ -1000,7 +1011,7 @@ async function startGeneration() {
     const plannedCities = Object.keys(planByCity);
     const unplannedCities = profile.cities.filter(c => !plannedCities.includes(c));
     if (unplannedCities.length) console.warn('[plan] falling back to single-base for unplanned cities:', unplannedCities);
-    console.debug('[legs]', legs.map(l => `${l.subArea}(${l.nights}n${l.arrivalAirport ? ' arr ' + l.arrivalAirport : ''}${l.departureTime ? ' dep ' + l.departureTime : ''})`).join(' → '));
+    console.debug('[legs]', legs.map(l => `${l.subArea}(${l.days}d ${l.legStartDate || '?'}→${l.legEndDate || '?'}${l.arrivalTimeOfDay ? ' ' + l.arrivalTimeOfDay : ''})`).join(' → '));
 
     // 3. Fetch candidates per sub-area in parallel, at tight radius.
     let candidates = null;
@@ -1020,7 +1031,14 @@ async function startGeneration() {
     clearInterval(stepInterval);
     for (let i = 0; i < 5; i++) { const el = document.getElementById(`ls-${i}`); el?.classList.remove('active'); el?.classList.add('done'); }
     await new Promise(r => setTimeout(r, 500));
-    state.tripData = { profile, itinerary, candidates, planByCity, legs };
+    state.tripData = { profile, itinerary, candidates, planByCity, legs, payment: { status: 'pending', amount: 499, currency: 'EUR' } };
+    // Persist the trip and update the URL so it's shareable / refresh-safe.
+    const uuid = await saveJourney(state.tripData);
+    if (uuid) {
+      state.tripData.uuid = uuid;
+      try { history.pushState({}, '', '/journey/' + uuid); } catch {}
+      console.debug('[journey] saved', uuid);
+    }
     showItinerary(profile, itinerary);
     enrichPlaces(profile, itinerary);
   } catch (err) {
@@ -1034,8 +1052,8 @@ async function startGeneration() {
 }
 async function callClaude(profile, customPrompt, candidatesMenu, legs) {
   const src = (legs && legs.length)
-    ? legs.map(l => ({ city: l.subArea, parentCity: l.parentCity, nights: l.nights, arrivalTimeOfDay: l.arrivalTimeOfDay, legStartDate: l.legStartDate, legEndDate: l.legEndDate, isFirstLegOfCity: l.isFirstLegOfCity, isLastLegOfCity: l.isLastLegOfCity }))
-    : profile.cities.map((c,i) => ({ city: c, parentCity: c, nights: profile.nights[i], arrivalTimeOfDay: profile.arrivalTimeOfDay?.[i] || '', legStartDate: profile.cityStartDates?.[i] || '', legEndDate: profile.cityEndDates?.[i] || '', isFirstLegOfCity: true, isLastLegOfCity: true }));
+    ? legs.map(l => ({ city: l.subArea, parentCity: l.parentCity, days: l.days, arrivalTimeOfDay: l.arrivalTimeOfDay, legStartDate: l.legStartDate, legEndDate: l.legEndDate, isFirstLegOfCity: l.isFirstLegOfCity, isLastLegOfCity: l.isLastLegOfCity }))
+    : profile.cities.map((c,i) => ({ city: c, parentCity: c, days: profile.days[i], arrivalTimeOfDay: profile.arrivalTimeOfDay?.[i] || '', legStartDate: profile.cityStartDates?.[i] || '', legEndDate: profile.cityEndDates?.[i] || '', isFirstLegOfCity: true, isLastLegOfCity: true }));
   const todLabel = (tod) => ({ morning: '☀️ Morning', midday: '🌤️ Midday', evening: '🌙 Evening' })[tod] || tod || 'unspecified';
   const cityList = src.map((d, i) => {
     const parent = d.parentCity && d.parentCity !== d.city ? ` (sub-area of ${d.parentCity})` : '';
@@ -1043,7 +1061,7 @@ async function callClaude(profile, customPrompt, candidatesMenu, legs) {
     const tod = d.arrivalTimeOfDay ? `, arrives ${todLabel(d.arrivalTimeOfDay)}` : '';
     const prevLeg = i > 0 ? src[i-1] : null;
     const transfer = (prevLeg && !d.arrivalTimeOfDay) ? `, ground transfer from ${prevLeg.city}` : '';
-    return `${d.city}${parent} (${d.nights} nights${dates}${tod}${transfer})`;
+    return `${d.city}${parent} (${d.days} days${dates}${tod}${transfer})`;
   }).join(', ');
   const langInstruction = currentLang !== 'en' ? ` Respond entirely in ${langNames[currentLang]} language.` : '';
   const menuBlock = candidatesMenu ? `\n${candidatesMenu}\n` : '';
@@ -1057,7 +1075,7 @@ ACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | IND
 
 STRUCTURE — HARD RULE: Each trip leg corresponds to ONE sub-area home base. Your returned JSON's "cities" array MUST contain one entry per leg, in the same order, with city.name = the EXACT sub-area name (e.g. "Ubud", "Seminyak" — NOT the parent region like "Bali"). Set city.country to the real country. Each city's days MUST use ONLY that sub-area's menu block under AVAILABLE VENUES — never pull a venue from a different sub-area's menu. The menu IS the geographic bound.
 
-DATES — HARD RULE: Each leg in TRIP LEGS above includes a date range (e.g. "May 10 → May 13"). Generate days[] for that leg starting from the leg's start date. Each day's "date" field MUST be the human-formatted date derived from that leg's start date plus dayNumber-1 days (e.g. leg May 10–13: day 1 = "Sat May 10", day 2 = "Sun May 11", day 3 = "Mon May 12"). Do not invent or skip dates. Number of days[] in each city must equal that leg's nights.
+DATES — HARD RULE: Each leg in TRIP LEGS above includes a day count (e.g. "4 days") AND a date range (e.g. "May 10 → May 13"). The cities[].days[] array MUST contain exactly that day count, no more, no less. Each day's "date" field MUST be the human-formatted date derived from that leg's start date plus dayNumber-1 days (e.g. leg May 10–13: day 1 = "Sat May 10", day 2 = "Sun May 11", day 3 = "Mon May 12", day 4 = "Tue May 13"). Do not invent or skip dates.
 
 DAY 1 OF EACH LEG — derive opening from arrivalTimeOfDay:
 - ☀️ Morning  → first event around 10:00 AM. Full day flow: breakfast/cafe → morning sight → lunch → afternoon sight → dinner → optional bar.
@@ -1074,7 +1092,7 @@ LAST DAY: no special departure rule; the user handles their own departure timing
 EVENT TYPES — strict whitelist: sight, meal, travel. NO hotel type. NO check-in events. NO airport transfer events. The product has no hotels.
 
 Return ONLY valid JSON (no markdown, no backticks):
-{"tripTitle":"evocative title","cities":[{"name":"Sub-area","country":"Country","nights":3,"dotColor":"#2D6A4F","days":[{"dayNumber":1,"date":"Mon Jun 10","title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"10:00 AM","type":"meal","tag":"Breakfast","name":"Cafe Name","desc":"One sentence description","details":["📍 Full address","💶 ~€8/person"],"isTravel":false},{"time":"11:30 AM","type":"sight","tag":"Sightseeing","name":"Place","desc":"One sentence description","details":["📍 Full address","⏱ ~2 hrs","🎟 €15"],"isTravel":false},{"time":"1:30 PM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 1 → ... (~€2)","travelDuration":"15 min","isTravel":true},{"time":"2:00 PM","type":"meal","tag":"Lunch","name":"Restaurant","desc":"One sentence description","details":["📍 Full address","💶 ~€20/person","📅 Reserve 2 days ahead"],"isTravel":false},{"time":"7:30 PM","type":"meal","tag":"Dinner","name":"Restaurant","desc":"One sentence description","details":["📍 Full address","💶 ~€35/person"],"isTravel":false},{"time":"10:00 PM","type":"sight","tag":"Bar","name":"Bar Name","desc":"One sentence description","details":["📍 Full address","💶 ~€12/cocktail"],"isTravel":false}],"tips":["tip1","tip2","tip3"]}]}]}
+{"tripTitle":"evocative title","cities":[{"name":"Sub-area","country":"Country","dotColor":"#2D6A4F","days":[{"dayNumber":1,"date":"Mon Jun 10","title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"10:00 AM","type":"meal","tag":"Breakfast","name":"Cafe Name","desc":"One sentence description","details":["📍 Full address","💶 ~€8/person"],"isTravel":false},{"time":"11:30 AM","type":"sight","tag":"Sightseeing","name":"Place","desc":"One sentence description","details":["📍 Full address","⏱ ~2 hrs","🎟 €15"],"isTravel":false},{"time":"1:30 PM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 1 → ... (~€2)","travelDuration":"15 min","isTravel":true},{"time":"2:00 PM","type":"meal","tag":"Lunch","name":"Restaurant","desc":"One sentence description","details":["📍 Full address","💶 ~€20/person","📅 Reserve 2 days ahead"],"isTravel":false},{"time":"7:30 PM","type":"meal","tag":"Dinner","name":"Restaurant","desc":"One sentence description","details":["📍 Full address","💶 ~€35/person"],"isTravel":false},{"time":"10:00 PM","type":"sight","tag":"Bar","name":"Bar Name","desc":"One sentence description","details":["📍 Full address","💶 ~€12/cocktail"],"isTravel":false}],"tips":["tip1","tip2","tip3"]}]}]}
 
 Details rules per event type:
 - Restaurants/Cafes/Bars (type=meal or sight tag=Bar) → ["📍 address","⏱ ~X hrs","💶 ~price/person","📅 reservation note"] (drop any field that doesn't apply).
@@ -1164,12 +1182,12 @@ function showItinerary(profile, itinerary) {
   let sbHtml = `<span class="sb-label">${u(t('sb_itinerary'))}</span>`;
   let dayCounter = 0;
   itinerary.cities.forEach(city => {
-    sbHtml += `<div><div class="sb-city-header"><div class="sb-city-dot" style="background:${city.dotColor}"></div><div class="sb-city-name">${city.name}</div><div class="sb-city-nights">${city.nights}n</div></div>`;
+    sbHtml += `<div><div class="sb-city-header"><div class="sb-city-dot" style="background:${city.dotColor}"></div><div class="sb-city-name">${city.name}</div><div class="sb-city-nights">${(city.days || []).length}d</div></div>`;
     city.days.forEach(day => { dayCounter++; sbHtml += `<a class="sb-day ${dayCounter===1?'active':''}" href="#day-${dayCounter}" onclick="setSbActive(this)"><span class="dn">D${day.dayNumber}</span>${day.title}<span class="dd">${day.date.split(' ').slice(0,2).join(' ')}</span></a>`; });
     sbHtml += `</div>`;
   });
   const sbAdults = `${profile.adults} ${profile.adults>1?t('adults_p'):t('adult_s')}${profile.kids>0?` + ${profile.kids} ${profile.kids>1?t('kids_p'):t('kid_s')}`:'' }`;
-  sbHtml += `<div class="sb-divider"></div><span class="sb-label">${u(t('sb_summary'))}</span><div class="sb-stats"><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_travellers'))}</span><span class="sb-stat-v">${sbAdults}</span></div><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_nights'))}</span><span class="sb-stat-v">${profile.nights.reduce((a,b)=>a+b,0)}</span></div><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_budget'))}</span><span class="sb-stat-v">${profile.budget}</span></div><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_pace'))}</span><span class="sb-stat-v">${profile.pace}</span></div></div>`;
+  sbHtml += `<div class="sb-divider"></div><span class="sb-label">${u(t('sb_summary'))}</span><div class="sb-stats"><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_travellers'))}</span><span class="sb-stat-v">${sbAdults}</span></div><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_days'))}</span><span class="sb-stat-v">${(profile.days || []).reduce((a,b)=>a+b,0)}</span></div><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_budget'))}</span><span class="sb-stat-v">${profile.budget}</span></div><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_pace'))}</span><span class="sb-stat-v">${profile.pace}</span></div></div>`;
   document.getElementById('itSidebar').innerHTML = sbHtml;
   let mainHtml = ''; let dc = 0;
   itinerary.cities.forEach((city,ci) => {
@@ -1299,7 +1317,7 @@ function openPlanSwap() {
       for (const opt of data.options) {
         const isCurrent = opt.id === data.picked?.id;
         const themes = (opt.themes || []).map(th => `<span class="plan-option-theme-tag">${th}</span>`).join('');
-        const planLine = (opt.plan || []).map(p => `${p.subArea} (${p.nights}n)`).join(' → ');
+        const planLine = (opt.plan || []).map(p => `${p.subArea} (${p.days} ${p.days === 1 ? t('day_singular') : t('day_plural')})`).join(' → ');
         const tagline = (opt.tagline || '').replace(/'/g, '&#39;');
         const currentLabel = isCurrent ? ` <span style="opacity:.7;font-weight:500;">${t('modal_current_label')}</span>` : '';
         html += `<div class="plan-option-card${isCurrent ? ' current' : ''}" onclick="swapPlanOption('${cityName.replace(/'/g, "\\'")}','${opt.id}')">
@@ -1369,6 +1387,72 @@ async function swapPlanOption(cityName, optionId) {
     document.getElementById('step-label').textContent = t('step_of').replace('{n}', state.currentStep + 1);
   }
 })();
+
+// ─── Journey persistence (server-side KV) ─────────────────────────────
+async function saveJourney(tripData) {
+  try {
+    const res = await fetch('/api/journey/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        profile: tripData.profile,
+        itinerary: tripData.itinerary,
+        candidates: tripData.candidates,
+        planByCity: state.plan?.byCity || tripData.planByCity || null,
+        legs: tripData.legs
+      })
+    });
+    if (!res.ok) { console.warn('[journey] save HTTP', res.status); return null; }
+    const data = await res.json();
+    return data.uuid || null;
+  } catch (e) { console.warn('[journey] save error', e); return null; }
+}
+
+async function loadJourney(uuid) {
+  try {
+    const res = await fetch('/api/journey/' + encodeURIComponent(uuid));
+    if (res.status === 404) return { notFound: true };
+    if (!res.ok) { console.warn('[journey] load HTTP', res.status); return null; }
+    return await res.json();
+  } catch (e) { console.warn('[journey] load error', e); return null; }
+}
+
+function showJourney404() {
+  document.getElementById('onboarding-view').style.display = 'none';
+  document.getElementById('onboarding-progress').style.display = 'none';
+  document.getElementById('loading-view').style.display = 'none';
+  const view = document.getElementById('journey-404-view');
+  if (view) view.style.display = 'flex';
+}
+
+async function bootFromUrl() {
+  const m = location.pathname.match(/^\/journey\/([0-9a-f-]{16,})\/?$/i);
+  if (!m) return false;
+  const uuid = m[1];
+  document.getElementById('onboarding-view').style.display = 'none';
+  document.getElementById('onboarding-progress').style.display = 'none';
+  document.getElementById('loading-view').style.display = 'flex';
+  document.getElementById('lang-switcher').style.display = 'none';
+  const data = await loadJourney(uuid);
+  document.getElementById('loading-view').style.display = 'none';
+  if (!data || data.notFound) { showJourney404(); return true; }
+  state.tripData = {
+    uuid: data.uuid,
+    profile: data.profile,
+    itinerary: data.itinerary,
+    candidates: data.candidates,
+    planByCity: data.planByCity,
+    legs: data.legs,
+    payment: data.payment
+  };
+  state.candidates = data.candidates || null;
+  state.plan = { byCity: data.planByCity || {} };
+  showItinerary(data.profile, data.itinerary);
+  enrichPlaces(data.profile, data.itinerary);
+  return true;
+}
+// Run boot after the DOM-tied init has settled.
+window.addEventListener('DOMContentLoaded', () => { bootFromUrl(); });
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 function initAutocomplete(input) {
   let validValue = input.value || '';
