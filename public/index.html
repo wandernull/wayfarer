@@ -31,6 +31,16 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .route-sep { color: var(--border); font-size: 14px; }
 .plan-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .plan-pill { background: #fff4e6; color: #a66400; padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.day-section.locked { filter: blur(8px); pointer-events: none; user-select: none; opacity: 0.62; transition: filter 0.4s, opacity 0.4s; }
+.lock-banner { background: linear-gradient(135deg, #fef3e6 0%, #fff8ed 100%); border: 2px solid #d4a55c; border-radius: 16px; padding: 28px 32px; margin: 28px 0 32px; text-align: center; position: relative; z-index: 10; box-shadow: 0 6px 24px rgba(212, 165, 92, 0.18); }
+.lock-banner-icon { font-size: 36px; margin-bottom: 6px; }
+.lock-banner-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; font-family: 'DM Serif Display', serif; color: #5e3d17; }
+.lock-banner-subtitle { font-size: 14px; color: #7a6448; line-height: 1.55; max-width: 520px; margin: 0 auto 20px; }
+.lock-banner-cta { background: #2D6A4F; color: white; border: none; padding: 14px 36px; border-radius: 100px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.15s, transform 0.1s; }
+.lock-banner-cta:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
+.lock-banner-cta:disabled { opacity: 0.5; cursor: wait; }
+.regen-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+#results-action-bar button:disabled { opacity: 0.45; cursor: not-allowed; }
 .plan-pill .plan-parent { opacity: 0.65; font-weight: 500; }
 .plan-pill.swappable { cursor: pointer; transition: transform 0.12s, background 0.12s; }
 .plan-pill.swappable:hover { background: #ffe8c4; transform: scale(1.03); }
@@ -1040,6 +1050,7 @@ async function startGeneration() {
       console.debug('[journey] saved', uuid);
     }
     showItinerary(profile, itinerary);
+    applyPaywallGating();
     enrichPlaces(profile, itinerary);
   } catch (err) {
     clearInterval(stepInterval);
@@ -1176,7 +1187,8 @@ function showItinerary(profile, itinerary) {
       const parent = entries.length > 1 ? `<span class="plan-parent">${cityName}:</span>` : '';
       const cls = swappable ? 'plan-pill swappable' : 'plan-pill';
       const onclick = swappable ? ' onclick="openPlanSwap()"' : '';
-      return `<div class="${cls}" title="${tagline}"${onclick}>🎯 ${parent}${d.picked.title}</div>`;
+      const swapAttr = ` data-swappable="${swappable}" data-tagline="${tagline}"`;
+      return `<div class="${cls}" title="${tagline}"${swapAttr}${onclick}>🎯 ${parent}${d.picked.title}</div>`;
     }).join('');
   }
   let sbHtml = `<span class="sb-label">${u(t('sb_itinerary'))}</span>`;
@@ -1298,6 +1310,7 @@ DINING: Day 1 evening-arrival → dinner only. Day 1 midday-arrival → lunch + 
       if (newDay.tips) dayObjUpd.tips = newDay.tips;
     }
     if (state.candidates) enrichFromCandidates(state.tripData.itinerary, state.candidates);
+    persistJourneyUpdate();
     btn.disabled = false; btn.textContent = t('regenerated');
     setTimeout(() => { btn.textContent = t('regen_day'); }, 2000);
   } catch(e) { btn.disabled = false; btn.textContent = t('regen_day'); alert(t('alert_regen_error')); }
@@ -1369,11 +1382,14 @@ async function swapPlanOption(cityName, optionId) {
     await new Promise(r => setTimeout(r, 400));
     state.tripData = { ...state.tripData, itinerary, candidates, legs };
     showItinerary(profile, itinerary);
+    applyPaywallGating();
     enrichPlaces(profile, itinerary);
+    persistJourneyUpdate();
   } catch (err) {
     clearInterval(stepInterval);
     document.getElementById('loading-view').style.display = 'none';
     showItinerary(profile, state.tripData.itinerary);
+    applyPaywallGating();
     alert(t('alert_error') + err.message);
   }
 }
@@ -1425,6 +1441,113 @@ function showJourney404() {
   if (view) view.style.display = 'flex';
 }
 
+// ─── Paywall gating ───────────────────────────────────────────────────
+// Apply / refresh the paywall lock state on the current itinerary view.
+// Idempotent: safe to call after every render (showItinerary, regenDay,
+// swapPlanOption). When paid, this is a no-op cleanup.
+function applyPaywallGating() {
+  const isPaid = state.tripData?.payment?.status === 'paid';
+
+  // Always: clear prior gating artefacts before re-applying.
+  document.querySelector('.lock-banner')?.remove();
+  document.querySelectorAll('.day-section.locked').forEach(el => el.classList.remove('locked'));
+  document.querySelectorAll('#results-action-bar button[data-paywall-disabled]').forEach(btn => {
+    btn.disabled = false;
+    btn.removeAttribute('data-paywall-disabled');
+    btn.removeAttribute('title');
+  });
+  document.querySelectorAll('.regen-btn[data-paywall-disabled]').forEach(btn => {
+    btn.disabled = false;
+    btn.removeAttribute('data-paywall-disabled');
+    btn.removeAttribute('title');
+  });
+  document.querySelectorAll('.plan-pill').forEach(p => {
+    const wasSwappable = p.dataset.swappable === 'true';
+    p.classList.toggle('swappable', isPaid && wasSwappable);
+    if (isPaid && wasSwappable) p.setAttribute('onclick', 'openPlanSwap()');
+    else p.removeAttribute('onclick');
+    if (!isPaid) p.title = wasSwappable ? t('cta_disabled_tooltip') : (p.dataset.tagline || '');
+  });
+
+  if (isPaid) return;
+
+  // Lock every day-section after the first one.
+  const sections = document.querySelectorAll('#itMain .day-section');
+  if (!sections.length) return;
+  let lockedCount = 0;
+  sections.forEach((sec, i) => { if (i > 0) { sec.classList.add('locked'); lockedCount++; } });
+
+  if (lockedCount > 0) {
+    const totalDays = sections.length;
+    const banner = document.createElement('div');
+    banner.className = 'lock-banner';
+    const subtitle = (t('unlock_banner_subtitle') || '')
+      .replace('{total}', String(totalDays))
+      .replace('{locked}', String(lockedCount));
+    banner.innerHTML =
+      `<div class="lock-banner-icon">🔒</div>` +
+      `<div class="lock-banner-title">${t('unlock_banner_title')}</div>` +
+      `<div class="lock-banner-subtitle">${subtitle}</div>` +
+      `<button class="lock-banner-cta" onclick="buyJourney()">${t('unlock_buy_cta')}</button>`;
+    sections[1].parentNode.insertBefore(banner, sections[1]);
+  }
+
+  // Disable action bar buttons (Edit trip / Export PDF).
+  document.querySelectorAll('#results-action-bar button').forEach(btn => {
+    btn.disabled = true;
+    btn.dataset.paywallDisabled = 'true';
+    btn.title = t('cta_disabled_tooltip');
+  });
+  // Disable per-day regen buttons.
+  document.querySelectorAll('.regen-btn').forEach(btn => {
+    btn.disabled = true;
+    btn.dataset.paywallDisabled = 'true';
+    btn.title = t('cta_disabled_tooltip');
+  });
+}
+
+async function buyJourney() {
+  if (!state.tripData?.uuid) return;
+  const btn = document.querySelector('.lock-banner-cta');
+  if (btn) { btn.disabled = true; btn.textContent = t('unlock_buying'); }
+  try {
+    const res = await fetch('/api/journey/' + encodeURIComponent(state.tripData.uuid) + '/buy', { method: 'POST' });
+    if (!res.ok) throw new Error('payment_failed_' + res.status);
+    const data = await res.json();
+    state.tripData.payment = { ...(state.tripData.payment || {}), status: 'paid', paidAt: data.paidAt };
+    console.debug('[paywall] unlocked', state.tripData.uuid);
+    applyPaywallGating();
+  } catch (e) {
+    console.warn('[buy] failed', e);
+    alert(t('alert_payment_failed'));
+    if (btn) { btn.disabled = false; btn.textContent = t('unlock_buy_cta'); }
+  }
+}
+
+// Persist paid trips after mutations (regen-day, plan-swap). No-op for
+// pending trips since their CTAs are disabled and they can't mutate.
+async function persistJourneyUpdate() {
+  if (state.tripData?.payment?.status !== 'paid') return;
+  const uuid = state.tripData.uuid;
+  if (!uuid) return;
+  try {
+    await fetch('/api/journey/' + encodeURIComponent(uuid) + '/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        profile: state.tripData.profile,
+        itinerary: state.tripData.itinerary,
+        candidates: state.tripData.candidates,
+        planByCity: state.plan?.byCity || state.tripData.planByCity || null,
+        legs: state.tripData.legs
+      })
+    });
+    console.debug('[journey] update persisted', uuid);
+  } catch (e) {
+    console.warn('[journey] update failed', e);
+  }
+}
+
 async function bootFromUrl() {
   const m = location.pathname.match(/^\/journey\/([0-9a-f-]{16,})\/?$/i);
   if (!m) return false;
@@ -1448,6 +1571,7 @@ async function bootFromUrl() {
   state.candidates = data.candidates || null;
   state.plan = { byCity: data.planByCity || {} };
   showItinerary(data.profile, data.itinerary);
+  applyPaywallGating();
   enrichPlaces(data.profile, data.itinerary);
   return true;
 }
