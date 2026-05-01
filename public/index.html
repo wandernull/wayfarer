@@ -42,8 +42,11 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .regen-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 #results-action-bar button:disabled { opacity: 0.45; cursor: not-allowed; }
 .plan-pill .plan-parent { opacity: 0.65; font-weight: 500; }
-.plan-pill.swappable { cursor: pointer; transition: transform 0.12s, background 0.12s; }
-.plan-pill.swappable:hover { background: #ffe8c4; transform: scale(1.03); }
+.plan-pill .plan-pill-prefix { opacity: 0.65; font-weight: 500; margin-right: 1px; }
+.plan-pill .plan-pill-chevron { font-size: 10px; opacity: 0.7; margin-left: 3px; transition: transform 0.15s, opacity 0.15s; }
+.plan-pill.swappable { padding: 6px 14px; cursor: pointer; transition: transform 0.12s, background 0.12s, box-shadow 0.15s; box-shadow: 0 1px 0 rgba(166, 100, 0, 0.12); }
+.plan-pill.swappable:hover { background: #ffe2b8; transform: scale(1.05); box-shadow: 0 3px 10px rgba(166, 100, 0, 0.22); }
+.plan-pill.swappable:hover .plan-pill-chevron { transform: translateY(2px); opacity: 1; }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
 .modal-card { background: var(--surface); border-radius: 16px; padding: 24px 26px; max-width: 580px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 18px 60px rgba(0,0,0,0.18); }
 .modal-card h3 { margin: 0 0 6px; font-size: 22px; font-family: 'DM Serif Display', serif; }
@@ -336,6 +339,7 @@ input::placeholder { color: var(--step-inactive); }
   </div>
 </header>
 <div id="results-action-bar">
+  <button class="btn-outline" id="switch-plan-btn" onclick="openPlanSwap()" data-i18n="switch_plan_btn" style="display:none;">🎯 Switch plan</button>
   <button class="btn-outline" onclick="resetApp()" data-i18n="edit_trip">✏️ Edit trip</button>
   <button class="btn-solid" onclick="window.print()" data-i18n="export_pdf">🖨 Export PDF</button>
 </div>
@@ -1188,8 +1192,13 @@ function showItinerary(profile, itinerary) {
       const cls = swappable ? 'plan-pill swappable' : 'plan-pill';
       const onclick = swappable ? ' onclick="openPlanSwap()"' : '';
       const swapAttr = ` data-swappable="${swappable}" data-tagline="${tagline}"`;
-      return `<div class="${cls}" title="${tagline}"${swapAttr}${onclick}>🎯 ${parent}${d.picked.title}</div>`;
+      const prefix = swappable ? `<span class="plan-pill-prefix">${t('plan_label_prefix')}</span> ` : '';
+      const chevron = swappable ? ` <span class="plan-pill-chevron">▾</span>` : '';
+      return `<div class="${cls}" title="${tagline}"${swapAttr}${onclick}>${prefix}🎯 ${parent}${d.picked.title}${chevron}</div>`;
     }).join('');
+    // Show / hide the bottom-bar Switch plan CTA in lockstep with swappability.
+    const switchBtn = document.getElementById('switch-plan-btn');
+    if (switchBtn) switchBtn.style.display = swappable ? '' : 'none';
   }
   let sbHtml = `<span class="sb-label">${u(t('sb_itinerary'))}</span>`;
   let dayCounter = 0;
