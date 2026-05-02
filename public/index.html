@@ -1528,16 +1528,52 @@ async function buyJourney() {
   if (btn) { btn.disabled = true; btn.textContent = t('unlock_buying'); }
   try {
     const res = await fetch('/api/journey/' + encodeURIComponent(state.tripData.uuid) + '/buy', { method: 'POST' });
-    if (!res.ok) throw new Error('payment_failed_' + res.status);
+    if (!res.ok) throw new Error('buy_failed_' + res.status);
     const data = await res.json();
-    state.tripData.payment = { ...(state.tripData.payment || {}), status: 'paid', paidAt: data.paidAt };
-    console.debug('[paywall] unlocked', state.tripData.uuid);
-    applyPaywallGating();
+    // Already paid (e.g. another tab already purchased) — unlock in place.
+    if (data.status === 'paid') {
+      state.tripData.payment = { ...(state.tripData.payment || {}), status: 'paid', paidAt: data.paidAt };
+      applyPaywallGating();
+      return;
+    }
+    if (data.url) {
+      // Hand off to Stripe Checkout. On success, Stripe redirects back to
+      // /journey/<uuid>?paid=1 and bootFromUrl polls /status until paid.
+      window.location.href = data.url;
+      return;
+    }
+    throw new Error('no_checkout_url');
   } catch (e) {
     console.warn('[buy] failed', e);
     alert(t('alert_payment_failed'));
     if (btn) { btn.disabled = false; btn.textContent = t('unlock_buy_cta'); }
   }
+}
+
+// After Stripe redirects back with ?paid=1, poll /status until the webhook
+// lands the paid state (~1-3 seconds typically). Refetches the full record
+// once paid so the UI re-hydrates with the updated payment block.
+async function pollPaymentStatus(uuid, maxAttempts = 12, intervalMs = 1000) {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const res = await fetch('/api/journey/' + encodeURIComponent(uuid) + '/status');
+      if (res.ok) {
+        const s = await res.json();
+        if (s.status === 'paid') {
+          const full = await loadJourney(uuid);
+          if (full && !full.notFound) {
+            state.tripData.payment = full.payment;
+            applyPaywallGating();
+            console.debug('[paywall] webhook landed, unlocked', uuid);
+            return true;
+          }
+        }
+      }
+    } catch {}
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+  console.warn('[paywall] status polling timed out for', uuid);
+  return false;
 }
 
 // Persist paid trips after mutations (regen-day, plan-swap). No-op for
@@ -1589,6 +1625,15 @@ async function bootFromUrl() {
   showItinerary(data.profile, data.itinerary);
   applyPaywallGating();
   enrichPlaces(data.profile, data.itinerary);
+  // Stripe-success return path: ?paid=1 means user just came back from Checkout.
+  // Poll /status until webhook lands the paid state, then re-hydrate + unlock.
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('paid') === '1' && state.tripData?.payment?.status !== 'paid') {
+    pollPaymentStatus(uuid).finally(() => {
+      // Strip the query string so refresh / share doesn't re-trigger polling.
+      try { history.replaceState({}, '', '/journey/' + uuid); } catch {}
+    });
+  }
   return true;
 }
 // Run boot after the DOM-tied init has settled.
