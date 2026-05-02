@@ -145,16 +145,28 @@ journey:<uuid> = {
 11. **i18n is comprehensive**. 7 languages. **Never hardcode user-visible English** — always go through `t(key)`. Add the key to all 7 language blocks in `translations.js`. The user has flagged this multiple times.
 12. **Regional vs dense-city sub-area lists** in the planner prompt are illustrative, not exhaustive. Adding new destinations only needs new examples if Claude's geography knowledge of them is shaky.
 
+## Status: live in production (last verified 2026-05-01)
+
+End-to-end Stripe Checkout flow has been tested with a real €4.99 purchase on `https://jounee.app`. Webhook fires reliably; KV record flips to paid; Day 2+ unblurs in place after the post-redirect poll. Production deploy is live.
+
+### Stripe ops cheatsheet
+
+- **Refund a real charge**: Stripe dashboard → **Jounee** account → **Payments** → click the charge → **Refund**. Card refund lands on the customer's statement in ~5-7 business days. The journey stays unlocked in KV (refunds don't auto-revert payment.status — by design; if you need to relock, edit the KV record manually with `wrangler kv key put --binding=JOURNEYS "journey:<uuid>" '<json>'`).
+- **Local dev secrets**: `.dev.vars` (gitignored) has Jounee's test-mode `STRIPE_SECRET_KEY` and the `STRIPE_WEBHOOK_SECRET` printed by `stripe listen`. **Important**: the CLI's default account is the *other* product (Plateform) — pin local `stripe listen` to Jounee with `--api-key sk_test_…`, otherwise events from Jounee Checkout never reach localhost.
+- **Production secrets**: live-mode `STRIPE_SECRET_KEY` and the dashboard-registered webhook signing secret are stored as encrypted Cloudflare Pages variables (production env) on the `wayfarer` project. Set via `npx wrangler pages secret put NAME --project-name=wayfarer`. Listed alongside `ANTHROPIC_API_KEY`, `GOOGLE_PLACES_API_KEY`, and a leftover `HERE_API_KEY` (orphan, not currently used by the codebase).
+- **Production webhook endpoint**: registered in Stripe → Jounee → Developers → Webhooks at `https://jounee.app/api/stripe/webhook`, listening for `checkout.session.completed`. Add `checkout.session.async_payment_succeeded` and `checkout.session.async_payment_failed` later for SEPA/delayed-payment support; current handler ignores them.
+- **Logs**: Cloudflare Pages → wayfarer → Functions → Logs (filter for `[webhook]`). Stripe dashboard → Webhooks → click the endpoint → Events tab shows delivery attempts + response codes.
+
 ## Open work
 
-### Stripe (just implemented but unverified end-to-end)
+### Worth doing soon
 
-- `/api/journey/[id]/buy.js` and `/api/stripe/webhook.js` are in place. **You must:**
-  - Add `STRIPE_SECRET_KEY` (test mode) to `.dev.vars` from the Jounee Stripe account → Developers → API keys.
-  - For local: run `stripe listen --forward-to localhost:8788/api/stripe/webhook` — the CLI prints a `whsec_…` value; put it in `.dev.vars` as `STRIPE_WEBHOOK_SECRET`.
-  - For production: in Cloudflare Pages → wayfarer → Settings → Variables, add `STRIPE_SECRET_KEY` (live mode) and `STRIPE_WEBHOOK_SECRET` (the production webhook secret from Stripe → Developers → Webhooks).
-  - Stripe dashboard: configure a webhook endpoint `https://jounee.app/api/stripe/webhook` listening to at least `checkout.session.completed`.
-- Test path: generate a trip locally → click Buy → Stripe Checkout opens (test card `4242 4242 4242 4242`) → redirect back to `/journey/<uuid>?paid=1` → frontend polls `/status` until webhook lands → unlock in place.
+- **Refund-to-relock automation.** Today: refunds in Stripe don't change KV. Most likely user behaviour: someone refunds, journey stays unlocked, they keep using it. Either accept that (free migration friction = low) or wire `charge.refunded` webhook → flip status back to pending. Decision pending.
+- **Spam / abuse defense.** Anyone can generate unlimited free trips (each one burns Anthropic Haiku tokens + Google Places quota + a KV record). No rate limits, no captcha, no auth. At scale this is real money. Cheap mitigation: per-IP rate limit at Cloudflare layer (Workers Rules or rate-limiting binding) before functions ever hit upstream APIs.
+- **Cross-language locale-aware pricing display.** €4.99 is hardcoded in copy and prompt. Consider `Intl.NumberFormat` for the displayed price; keep the actual Stripe charge in EUR (Stripe handles FX on the customer side).
+- **Marketing landing page**. Currently `/` IS the form. No SEO content, no positioning. Ship even a one-page landing for organic discovery.
+- **Analytics / funnel tracking**. Zero visibility on form-start → generation-complete → buy-click → buy-success drop-off rates. Plausible/Posthog/even Cloudflare Web Analytics would unlock real product decisions.
+- **Customer support inbox.** `support@jounee.app` is referenced in Stripe and customer emails but probably doesn't route anywhere yet. Set up forwarding to a real inbox.
 
 ### Known sharp edges
 
