@@ -508,7 +508,7 @@ function changeLang(lang) {
   applyTranslations();
   document.getElementById('step-label').textContent = t('step_of').replace('{n}', state.currentStep + 1);
 }
-const state = { currentStep: 0, adults: 2, kids: 0, tripData: null };
+const state = { currentStep: 0, adults: 2, kids: 0, tripData: null, paywallOverride: null };
 function goTo(step) {
   document.getElementById(`step-${state.currentStep}`).style.display = 'none';
   state.currentStep = step;
@@ -1497,14 +1497,30 @@ function applyPaywallGating() {
     const totalDays = sections.length;
     const banner = document.createElement('div');
     banner.className = 'lock-banner';
-    const subtitle = (t('unlock_banner_subtitle') || '')
-      .replace('{total}', String(totalDays))
-      .replace('{locked}', String(lockedCount));
-    banner.innerHTML =
-      `<div class="lock-banner-icon">🔒</div>` +
-      `<div class="lock-banner-title">${t('unlock_banner_title')}</div>` +
-      `<div class="lock-banner-subtitle">${subtitle}</div>` +
-      `<button class="lock-banner-cta" onclick="buyJourney()">${t('unlock_buy_cta')}</button>`;
+    // Three banner shapes: confirming (post-Stripe redirect, awaiting webhook),
+    // confirm_timeout (poll exhausted — webhook still hasn't landed), default
+    // (regular pre-purchase lock with Buy CTA).
+    if (state.paywallOverride === 'confirming') {
+      banner.innerHTML =
+        `<div class="lock-banner-icon">⏳</div>` +
+        `<div class="lock-banner-title">${t('confirming_payment_title')}</div>` +
+        `<div class="lock-banner-subtitle">${t('confirming_payment_subtitle')}</div>`;
+    } else if (state.paywallOverride === 'confirm_timeout') {
+      banner.innerHTML =
+        `<div class="lock-banner-icon">⏳</div>` +
+        `<div class="lock-banner-title">${t('confirming_payment_title')}</div>` +
+        `<div class="lock-banner-subtitle">${t('confirming_timeout_message')}</div>` +
+        `<button class="lock-banner-cta" onclick="location.reload()">${t('confirming_refresh_cta')}</button>`;
+    } else {
+      const subtitle = (t('unlock_banner_subtitle') || '')
+        .replace('{total}', String(totalDays))
+        .replace('{locked}', String(lockedCount));
+      banner.innerHTML =
+        `<div class="lock-banner-icon">🔒</div>` +
+        `<div class="lock-banner-title">${t('unlock_banner_title')}</div>` +
+        `<div class="lock-banner-subtitle">${subtitle}</div>` +
+        `<button class="lock-banner-cta" onclick="buyJourney()">${t('unlock_buy_cta')}</button>`;
+    }
     sections[1].parentNode.insertBefore(banner, sections[1]);
   }
 
@@ -1551,9 +1567,13 @@ async function buyJourney() {
 }
 
 // After Stripe redirects back with ?paid=1, poll /status until the webhook
-// lands the paid state (~1-3 seconds typically). Refetches the full record
-// once paid so the UI re-hydrates with the updated payment block.
-async function pollPaymentStatus(uuid, maxAttempts = 12, intervalMs = 1000) {
+// lands the paid state (~1-3 seconds typically). Stepped interval: 1s for
+// the first 5 attempts, then 2s — covers slower webhook deliveries (~21s
+// total) without hammering KV. Refetches the full record once paid so the
+// UI re-hydrates with the updated payment block. Sets paywallOverride to
+// 'confirm_timeout' on exhaustion so the user sees a refresh hint instead
+// of the Buy CTA (they did pay).
+async function pollPaymentStatus(uuid, maxAttempts = 13) {
   for (let i = 0; i < maxAttempts; i++) {
     try {
       const res = await fetch('/api/journey/' + encodeURIComponent(uuid) + '/status');
@@ -1563,6 +1583,7 @@ async function pollPaymentStatus(uuid, maxAttempts = 12, intervalMs = 1000) {
           const full = await loadJourney(uuid);
           if (full && !full.notFound) {
             state.tripData.payment = full.payment;
+            state.paywallOverride = null;
             applyPaywallGating();
             console.debug('[paywall] webhook landed, unlocked', uuid);
             return true;
@@ -1570,9 +1591,11 @@ async function pollPaymentStatus(uuid, maxAttempts = 12, intervalMs = 1000) {
         }
       }
     } catch {}
-    await new Promise(r => setTimeout(r, intervalMs));
+    await new Promise(r => setTimeout(r, i < 5 ? 1000 : 2000));
   }
   console.warn('[paywall] status polling timed out for', uuid);
+  state.paywallOverride = 'confirm_timeout';
+  applyPaywallGating();
   return false;
 }
 
@@ -1622,13 +1645,17 @@ async function bootFromUrl() {
   };
   state.candidates = data.candidates || null;
   state.plan = { byCity: data.planByCity || {} };
+  // Stripe-success return path: ?paid=1 means user just came back from Checkout.
+  // Set the 'confirming' override BEFORE the first paywall render so the user
+  // sees "Confirming your payment…" instead of the Buy banner during the poll
+  // window. pollPaymentStatus clears the override on success.
+  const qs = new URLSearchParams(location.search);
+  const awaitingWebhook = qs.get('paid') === '1' && data.payment?.status !== 'paid';
+  if (awaitingWebhook) state.paywallOverride = 'confirming';
   showItinerary(data.profile, data.itinerary);
   applyPaywallGating();
   enrichPlaces(data.profile, data.itinerary);
-  // Stripe-success return path: ?paid=1 means user just came back from Checkout.
-  // Poll /status until webhook lands the paid state, then re-hydrate + unlock.
-  const qs = new URLSearchParams(location.search);
-  if (qs.get('paid') === '1' && state.tripData?.payment?.status !== 'paid') {
+  if (awaitingWebhook) {
     pollPaymentStatus(uuid).finally(() => {
       // Strip the query string so refresh / share doesn't re-trigger polling.
       try { history.replaceState({}, '', '/journey/' + uuid); } catch {}

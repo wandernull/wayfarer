@@ -140,7 +140,7 @@ journey:<uuid> = {
 6. **Sub-area day minimums are differentiated by destination type.** Bali/Oahu/Phuket → min 2 days per sub-area (long transfers). Berlin/Paris/NYC → min 1 day allowed (15-min metro). See `SUB-AREA DAY MINIMUMS` block in the planner prompt.
 7. **Variety mandate**: menu shuffled per call + `temperature: 1.0` explicit + regen passes a "do-not-use" list of already-chosen venues. Earlier the model echoed the same restaurant on every day; this triplet kills it.
 8. **Plan-swap reuses cached options**. Doesn't call the planner again. Re-runs only legs → candidates → itinerary. Cheaper, faster, but means option content reflects the planner version that ran when the trip was first generated.
-9. **Paywall = blur Day 2+, disable CTAs, banner with Buy.** Day 1 always free as the demo. `applyPaywallGating()` is idempotent — safe to call after every render. Keep it that way.
+9. **Paywall = blur Day 2+, disable CTAs, banner with Buy.** Day 1 always free as the demo. `applyPaywallGating()` is idempotent — safe to call after every render. Keep it that way. The banner has three shapes selected by `state.paywallOverride`: `null` → default Buy banner, `'confirming'` → ⏳ "Confirming your payment…" (no CTA), `'confirm_timeout'` → ⏳ + refresh button (poll exhausted, webhook still hasn't landed). Override is set in `bootFromUrl` when `?paid=1` arrives and cleared by `pollPaymentStatus` on success.
 10. **Re-save on paid mutations.** `regenDay` and `swapPlanOption` call `persistJourneyUpdate()` so the KV record stays fresh for shared URLs. No-op when unpaid (CTAs are disabled anyway).
 11. **i18n is comprehensive**. 7 languages. **Never hardcode user-visible English** — always go through `t(key)`. Add the key to all 7 language blocks in `translations.js`. The user has flagged this multiple times.
 12. **Regional vs dense-city sub-area lists** in the planner prompt are illustrative, not exhaustive. Adding new destinations only needs new examples if Claude's geography knowledge of them is shaky.
@@ -148,6 +148,8 @@ journey:<uuid> = {
 ## Status: live in production (last verified 2026-05-01)
 
 End-to-end Stripe Checkout flow has been tested with a real €4.99 purchase on `https://jounee.app`. Webhook fires reliably; KV record flips to paid; Day 2+ unblurs in place after the post-redirect poll. Production deploy is live.
+
+Post-redirect UX: while the webhook propagates the paid state to KV, the SPA shows a ⏳ "Confirming your payment…" banner instead of the Buy CTA. `pollPaymentStatus` polls `/status` for ~21s (1s × 5 then 2s × 8). On success it re-hydrates and unlocks; on exhaustion it swaps to a "Payment is taking longer than expected — refresh" banner so a paid user never sees a Buy CTA again.
 
 ### Stripe ops cheatsheet
 
