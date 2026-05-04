@@ -1543,7 +1543,15 @@ async function buyJourney() {
   const btn = document.querySelector('.lock-banner-cta');
   if (btn) { btn.disabled = true; btn.textContent = t('unlock_buying'); }
   try {
-    const res = await fetch('/api/journey/' + encodeURIComponent(state.tripData.uuid) + '/buy', { method: 'POST' });
+    const res = await fetch('/api/journey/' + encodeURIComponent(state.tripData.uuid) + '/buy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        locale: currentLang,
+        productName: t('stripe_product_name'),
+        productDescription: t('stripe_product_description')
+      })
+    });
     if (!res.ok) throw new Error('buy_failed_' + res.status);
     const data = await res.json();
     // Already paid (e.g. another tab already purchased) — unlock in place.

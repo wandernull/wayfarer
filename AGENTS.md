@@ -126,7 +126,7 @@ journey:<uuid> = {
 | POST | `/api/journey/save` | Generates UUID, stores trip with 30-day TTL. |
 | GET  | `/api/journey/[id]` | Full record (payment block sanitized). 404 if expired. |
 | GET  | `/api/journey/[id]/status` | Lightweight `{ status, paidAt }`. |
-| POST | `/api/journey/[id]/buy` | Creates Stripe Checkout session, returns URL. Idempotent if already paid. |
+| POST | `/api/journey/[id]/buy` | Creates Stripe Checkout session, returns URL. Idempotent if already paid. Accepts `{ locale, productName, productDescription }` so the Stripe-hosted UI **and** the line item copy match the user's selected language. Locale is whitelisted; product strings are length-capped (60 / 500 chars) before being forwarded. |
 | POST | `/api/journey/[id]/update` | Replace trip payload on a paid record (used by regen-day, plan-swap). |
 | POST | `/api/stripe/webhook` | Verifies Stripe signature, flips KV record to paid on `checkout.session.completed`. |
 
@@ -142,7 +142,7 @@ journey:<uuid> = {
 8. **Plan-swap reuses cached options**. Doesn't call the planner again. Re-runs only legs → candidates → itinerary. Cheaper, faster, but means option content reflects the planner version that ran when the trip was first generated.
 9. **Paywall = blur Day 2+, disable CTAs, banner with Buy.** Day 1 always free as the demo. `applyPaywallGating()` is idempotent — safe to call after every render. Keep it that way. The banner has three shapes selected by `state.paywallOverride`: `null` → default Buy banner, `'confirming'` → ⏳ "Confirming your payment…" (no CTA), `'confirm_timeout'` → ⏳ + refresh button (poll exhausted, webhook still hasn't landed). Override is set in `bootFromUrl` when `?paid=1` arrives and cleared by `pollPaymentStatus` on success.
 10. **Re-save on paid mutations.** `regenDay` and `swapPlanOption` call `persistJourneyUpdate()` so the KV record stays fresh for shared URLs. No-op when unpaid (CTAs are disabled anyway).
-11. **i18n is comprehensive**. 7 languages. **Never hardcode user-visible English** — always go through `t(key)`. Add the key to all 7 language blocks in `translations.js`. The user has flagged this multiple times.
+11. **i18n is comprehensive**. 7 languages. **Never hardcode user-visible English** — always go through `t(key)`. Add the key to all 7 language blocks in `translations.js`. The user has flagged this multiple times. This extends to the Stripe Checkout page: `buyJourney()` forwards `currentLang` plus the localized `stripe_product_name` / `stripe_product_description` to the buy endpoint, which passes them through to Stripe so both the hosted UI **and** the line item copy match the SPA. Never use `locale: 'auto'` — explicit forwarding ensures consistency with the language the user picked in our UI. Translations stay in `translations.js` (single source of truth); the backend has English fallbacks only as a defensive default if the body is malformed.
 12. **Regional vs dense-city sub-area lists** in the planner prompt are illustrative, not exhaustive. Adding new destinations only needs new examples if Claude's geography knowledge of them is shaky.
 
 ## Status: live in production (last verified 2026-05-01)

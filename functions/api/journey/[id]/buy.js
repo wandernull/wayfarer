@@ -5,9 +5,29 @@
 //
 // If the journey is already paid, returns { status: 'paid' } without
 // creating a new session — defends against double-clicks and refresh loops.
+// Stripe Checkout supports a `locale` parameter that controls the language of
+// the hosted Checkout UI. We mirror Jounee's 7 supported languages so a user
+// browsing in Turkish doesn't get dropped into an English Stripe page mid-flow.
+// Whitelist guards against arbitrary values being forwarded to Stripe.
+const SUPPORTED_LOCALES = new Set(['en', 'tr', 'es', 'fr', 'de', 'it', 'pt']);
+
 export async function onRequestPost(context) {
   const { params, env, request } = context;
   const uuid = params.id;
+
+  let body = {};
+  try { body = await request.json(); } catch {}
+  const locale = SUPPORTED_LOCALES.has(body?.locale) ? body.locale : 'en';
+  // Localized product copy is forwarded from the SPA (single source of truth in
+  // translations.js). Length caps + type guard defend against the client
+  // forwarding garbage / overlong strings to Stripe (which would also be
+  // visible on the receipt). Falls back to English defaults if missing.
+  const productName = (typeof body?.productName === 'string' && body.productName.trim())
+    ? body.productName.trim().slice(0, 60)
+    : 'Jounee itinerary';
+  const productDescription = (typeof body?.productDescription === 'string' && body.productDescription.trim())
+    ? body.productDescription.trim().slice(0, 500)
+    : 'Personalized multi-day travel itinerary. Unlocks the full trip, day regeneration, plan switching, and PDF export. One charge per trip — no subscription.';
 
   if (!env.JOURNEYS) {
     return json({ error: 'JOURNEYS KV binding missing' }, 500);
@@ -43,15 +63,13 @@ export async function onRequestPost(context) {
   params2.append('mode', 'payment');
   params2.append('payment_method_types[]', 'card');
   params2.append('line_items[0][price_data][currency]', 'eur');
-  params2.append('line_items[0][price_data][product_data][name]', 'Jounee itinerary');
-  params2.append(
-    'line_items[0][price_data][product_data][description]',
-    'Personalized multi-day travel itinerary. Unlocks the full trip, day regeneration, plan switching, and PDF export. One charge per trip — no subscription.'
-  );
+  params2.append('line_items[0][price_data][product_data][name]', productName);
+  params2.append('line_items[0][price_data][product_data][description]', productDescription);
   params2.append('line_items[0][price_data][unit_amount]', '499'); // €4.99
   params2.append('line_items[0][quantity]', '1');
   params2.append('success_url', successUrl);
   params2.append('cancel_url', cancelUrl);
+  params2.append('locale', locale);
   params2.append('metadata[journey_uuid]', uuid);
   params2.append('payment_intent_data[metadata][journey_uuid]', uuid);
   params2.append('client_reference_id', uuid);
