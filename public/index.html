@@ -1,289 +1,1921 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Jounee — AI Travel Planner</title>
-<link href="https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.0.8/700.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.0.8/400-italic.css" rel="stylesheet">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Jounee – AI Travel Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+<script src="/translations.js"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F7F5F2; --surface: #FFFFFF; --border: #E8E4DF; --text-primary: #1A1714;
+  --text-secondary: #7A7470; --accent: #2D6A4F; --accent-light: #E8F4EF;
+  --accent-hover: #235C43; --danger: #C0392B; --step-inactive: #D5CFC9;
+  --sidebar-w: 272px; --header-h: 64px;
+}
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text-primary); min-height: 100vh; }
+#app-header { position: fixed; top: 0; left: 0; right: 0; z-index: 200; height: var(--header-h); background: rgba(247,245,242,0.94); backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 36px; gap: 20px; }
+.logo { font-family: 'DM Serif Display', serif; font-size: 21px; color: var(--text-primary); white-space: nowrap; flex-shrink: 0; text-decoration: none; cursor: pointer; transition: opacity 0.15s; }
+.logo:hover { opacity: 0.75; }
+.logo span { color: var(--accent); font-style: italic; }
+#onboarding-progress { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--step-inactive); transition: all 0.3s; }
+.step-dot.active { background: var(--accent); transform: scale(1.35); }
+.step-dot.done { background: var(--accent); opacity: 0.38; }
+.step-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; margin-left: 8px; }
+#itinerary-header-extras { display: none; align-items: center; gap: 10px; margin-left: auto; overflow: hidden; }
+#results-action-bar { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 150; background: rgba(247,245,242,0.96); backdrop-filter: blur(14px); border-top: 1px solid var(--border); padding: 12px 36px; align-items: center; justify-content: flex-end; gap: 10px; }
+.trip-route { display: flex; align-items: center; gap: 6px; }
+.route-city { background: var(--accent-light); color: var(--accent); padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; }
+.route-sep { color: var(--border); font-size: 14px; }
+.plan-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.plan-pill { background: #fff4e6; color: #a66400; padding: 4px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.day-section.locked { filter: blur(8px); pointer-events: none; user-select: none; opacity: 0.62; transition: filter 0.4s, opacity 0.4s; }
+.lock-banner { background: linear-gradient(135deg, #fef3e6 0%, #fff8ed 100%); border: 2px solid #d4a55c; border-radius: 16px; padding: 28px 32px; margin: 28px 0 32px; text-align: center; position: relative; z-index: 10; box-shadow: 0 6px 24px rgba(212, 165, 92, 0.18); }
+.lock-banner-icon { font-size: 36px; margin-bottom: 6px; }
+.lock-banner-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; font-family: 'DM Serif Display', serif; color: #5e3d17; }
+.lock-banner-subtitle { font-size: 14px; color: #7a6448; line-height: 1.55; max-width: 520px; margin: 0 auto 20px; }
+.lock-banner-cta { background: #2D6A4F; color: white; border: none; padding: 14px 36px; border-radius: 100px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.15s, transform 0.1s; }
+.lock-banner-cta:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
+.lock-banner-cta:disabled { opacity: 0.5; cursor: wait; }
+.regen-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+#results-action-bar button:disabled { opacity: 0.45; cursor: not-allowed; }
+.plan-pill .plan-parent { opacity: 0.65; font-weight: 500; }
+.plan-pill .plan-pill-prefix { opacity: 0.65; font-weight: 500; margin-right: 1px; }
+.plan-pill .plan-pill-chevron { font-size: 10px; opacity: 0.7; margin-left: 3px; transition: transform 0.15s, opacity 0.15s; }
+.plan-pill.swappable { padding: 6px 14px; cursor: pointer; transition: transform 0.12s, background 0.12s, box-shadow 0.15s, opacity 0.15s; box-shadow: 0 1px 0 rgba(166, 100, 0, 0.12); }
+.plan-pill.swappable:not(.paywall-locked):hover { background: #ffe2b8; transform: scale(1.05); box-shadow: 0 3px 10px rgba(166, 100, 0, 0.22); }
+.plan-pill.swappable:not(.paywall-locked):hover .plan-pill-chevron { transform: translateY(2px); opacity: 1; }
+.plan-pill.swappable.paywall-locked { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal-card { background: var(--surface); border-radius: 16px; padding: 24px 26px; max-width: 580px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 18px 60px rgba(0,0,0,0.18); }
+.modal-card h3 { margin: 0 0 6px; font-size: 22px; font-family: 'DM Serif Display', serif; }
+.modal-subtitle { color: var(--text-secondary); font-size: 13px; margin-bottom: 20px; }
+.modal-city-header { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); text-transform: uppercase; margin: 18px 0 10px; }
+.modal-city-header:first-child { margin-top: 0; }
+.plan-option-card { border: 2px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.plan-option-card:hover { border-color: var(--accent); }
+.plan-option-card.current { border-color: var(--accent); background: var(--accent-light); }
+.plan-option-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.plan-option-tagline { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+.plan-option-themes { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.plan-option-theme-tag { background: var(--accent-light); color: var(--accent); padding: 2px 9px; border-radius: 100px; font-size: 11px; font-weight: 600; }
+.plan-option-plan { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.btn-outline { padding: 8px 14px; border: 1.5px solid var(--border); border-radius: 8px; background: var(--surface); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: var(--text-primary); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 5px; }
+.btn-outline:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
+.btn-solid { padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+.btn-solid:hover { background: var(--accent-hover); }
+#onboarding-view { padding-top: var(--header-h); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding-bottom: 40px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; width: 100%; max-width: 620px; padding: 50px 54px; animation: fadeUp 0.38s ease both; margin: 40px 24px; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+.step-badge { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 10px; }
+.card h2 { font-family: 'DM Serif Display', serif; font-size: 28px; line-height: 1.25; margin-bottom: 6px; }
+.card .subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 32px; line-height: 1.6; }
+label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 7px; letter-spacing: 0.2px; }
+input[type="text"], input[type="number"], input[type="date"], input[type="time"], select { width: 100%; padding: 12px 15px; border: 1.5px solid var(--border); border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text-primary); background: var(--bg); outline: none; transition: border-color 0.2s, box-shadow 0.2s; -webkit-appearance: none; }
+input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); background: #fff; }
+input::placeholder { color: var(--step-inactive); }
+.field { margin-bottom: 22px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 22px; }
+.chip-group { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 22px; }
+.chip { padding: 9px 16px; border: 1.5px solid var(--border); border-radius: 100px; font-size: 13px; font-weight: 500; color: var(--text-secondary); background: var(--bg); cursor: pointer; transition: all 0.16s; user-select: none; }
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 9px; }
+.city-list { display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px; }
+.city-row { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; position: relative; }
+.city-row + .city-row { margin-top: 12px; }
+.city-row .remove-btn { position: absolute; top: 10px; right: 12px; height: 30px; width: 30px; border: none; background: none; color: var(--text-secondary); font-size: 20px; cursor: pointer; border-radius: 6px; transition: color 0.2s, background 0.2s; display: flex; align-items: center; justify-content: center; z-index: 2; }
+.city-row .remove-btn:hover { color: var(--danger, #c0392b); background: #fdf2f2; }
+.city-row-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); text-transform: uppercase; display: block; margin-bottom: 6px; }
+.city-row-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px 12px; }
+.city-row-grid .gc-city { grid-column: span 8; padding-right: 36px; }
+.city-row-grid .gc-arrival { grid-column: span 4; }
+.city-row-grid .gc-start { grid-column: span 6; }
+.city-row-grid .gc-end { grid-column: span 6; }
+.flight-block-inputs { display: grid; grid-template-columns: 1fr 100px; gap: 8px; }
+.flight-block-inputs .airport-select,
+.flight-block-inputs input[type="time"] { width: 100%; min-width: 0; padding: 12px 10px; }
+.flight-block-inputs input[type="time"] { text-align: center; }
+.arrival-tod-select { width: 100%; min-width: 0; padding: 12px 10px; font-family: inherit; font-size: 14px; }
+.city-date-input { width: 100%; min-width: 0; padding: 12px 10px; font-family: inherit; font-size: 14px; box-sizing: border-box; }
+.airport-select:disabled { opacity: 0.5; cursor: not-allowed; }
+.flights-gate { margin: 18px 0 12px; }
+.flights-gate-q { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+.flights-gate-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.flights-choice { border: 2px solid var(--border); background: var(--bg); padding: 16px; border-radius: 12px; cursor: pointer; text-align: left; transition: border-color 0.15s, background 0.15s; font-family: inherit; }
+.flights-choice:hover { border-color: var(--accent); background: var(--accent-light); }
+.flights-choice-icon { font-size: 24px; margin-bottom: 6px; }
+.flights-choice-label { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--text); }
+.flights-choice-desc { font-size: 12px; color: var(--text-secondary); }
+.flights-mode-indicator { display: flex; align-items: center; justify-content: space-between; background: var(--accent-light); color: var(--accent); padding: 8px 14px; border-radius: 8px; margin: 12px 0; font-size: 13px; font-weight: 600; }
+.change-answer-btn { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 12px; font-weight: 600; text-decoration: underline; padding: 0; font-family: inherit; }
+#step-0.flights-mode-rough .airport-select { display: none; }
+#step-0.flights-mode-rough .flight-block-inputs { grid-template-columns: 1fr; }
+.city-secondary .departure-input { padding: 12px 6px; text-align: center; }
+.add-city-btn { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--accent); background: none; border: 1.5px dashed var(--accent); border-radius: 10px; padding: 10px 18px; cursor: pointer; transition: background 0.18s; width: 100%; margin-bottom: 22px; }
+.add-city-btn:hover { background: var(--accent-light); }
+.stepper { display: flex; align-items: center; border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg); width: fit-content; }
+.stepper button { width: 40px; height: 42px; border: none; background: none; font-size: 18px; cursor: pointer; color: var(--text-secondary); transition: background 0.15s, color 0.15s; }
+.stepper button:hover { background: var(--accent-light); color: var(--accent); }
+.stepper span { min-width: 44px; text-align: center; font-size: 15px; font-weight: 600; border-left: 1.5px solid var(--border); border-right: 1.5px solid var(--border); line-height: 42px; }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.toggle-row:last-child { border-bottom: none; }
+.toggle-info p { font-size: 14px; font-weight: 500; }
+.toggle-info small { font-size: 12px; color: var(--text-secondary); }
+.toggle { position: relative; width: 42px; height: 23px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 23px; cursor: pointer; transition: background 0.2s; }
+.toggle-slider::before { content: ''; position: absolute; width: 17px; height: 17px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+.toggle input:checked + .toggle-slider { background: var(--accent); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(19px); }
+.budget-track { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 22px; }
+.budget-option { border: 1.5px solid var(--border); border-radius: 12px; padding: 14px; cursor: pointer; transition: all 0.18s; text-align: center; background: var(--bg); }
+.budget-option:hover { border-color: var(--accent); }
+.budget-option.selected { border-color: var(--accent); background: var(--accent-light); }
+.budget-option .icon { font-size: 20px; margin-bottom: 5px; }
+.budget-option .name { font-size: 13px; font-weight: 600; }
+.budget-option .desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+.summary-item { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.summary-item .s-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 5px; }
+.summary-item .s-value { font-size: 14px; font-weight: 600; }
+.pref-pill { display: inline-block; background: var(--accent-light); color: var(--accent); padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; margin: 2px 4px 2px 0; }
+.flights-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight: 600; }
+.flights-pill.booked { background: var(--accent-light); color: var(--accent); }
+.flights-pill.rough { background: #fff4e6; color: #a66400; }
+.summary-cities { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+.city-route-preview { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 7px; }
+.city-tag { background: var(--accent-light); color: var(--accent); border-radius: 100px; padding: 4px 11px; font-size: 12px; font-weight: 600; }
+.route-arrow { color: var(--step-inactive); font-size: 13px; }
+.nav-row { display: flex; align-items: center; justify-content: space-between; margin-top: 36px; padding-top: 28px; border-top: 1px solid var(--border); }
+.btn-back { font-size: 14px; font-weight: 500; color: var(--text-secondary); background: none; border: none; cursor: pointer; padding: 10px 0; transition: color 0.2s; }
+.btn-back:hover { color: var(--text-primary); }
+.btn-next { padding: 12px 28px; background: var(--accent); color: white; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s, transform 0.15s; }
+.btn-next:hover { background: var(--accent-hover); transform: translateY(-1px); }
+.generate-btn { width: 100%; padding: 15px; background: var(--accent); color: white; border: none; border-radius: 12px; font-family: 'DM Serif Display', serif; font-size: 18px; cursor: pointer; transition: background 0.2s, transform 0.15s; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 6px; }
+.generate-btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
+.generate-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+#loading-view { display: none; padding-top: var(--header-h); min-height: 100vh; align-items: center; justify-content: center; flex-direction: column; }
+.loading-spinner { width: 52px; height: 52px; border: 3px solid var(--accent-light); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.9s linear infinite; margin: 0 auto 24px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-title { font-family: 'DM Serif Display', serif; font-size: 26px; margin-bottom: 10px; text-align: center; }
+.loading-steps { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; text-align: left; max-width: 340px; width: 100%; }
+.loading-step { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-secondary); transition: color 0.3s; }
+.loading-step.active { color: var(--accent); font-weight: 600; }
+.loading-step.done { color: var(--text-secondary); opacity: 0.5; }
+.ls-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); flex-shrink: 0; transition: background 0.3s; }
+.loading-step.active .ls-dot { background: var(--accent); }
+.loading-step.done .ls-dot { background: var(--accent); opacity: 0.5; }
+#itinerary-view { display: none; padding-top: var(--header-h); min-height: 100vh; }
+.itinerary-layout { display: flex; min-height: calc(100vh - var(--header-h)); }
+.it-sidebar { width: var(--sidebar-w); position: fixed; top: var(--header-h); left: 0; bottom: 0; background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 24px 0; z-index: 100; }
+.it-sidebar::-webkit-scrollbar { width: 3px; }
+.it-sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.sb-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--text-secondary); padding: 0 22px; margin-bottom: 8px; display: block; }
+.sb-city-header { display: flex; align-items: center; gap: 8px; padding: 10px 22px 5px; }
+.sb-city-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.sb-city-name { font-size: 13px; font-weight: 600; }
+.sb-city-nights, .sb-city-days { font-size: 11px; color: var(--text-secondary); margin-left: auto; }
+.sb-day { display: flex; align-items: center; gap: 8px; padding: 7px 22px 7px 38px; font-size: 13px; color: var(--text-secondary); cursor: pointer; border-left: 2px solid transparent; transition: all 0.15s; text-decoration: none; }
+.sb-day:hover { background: var(--bg); color: var(--text-primary); }
+.sb-day.active { background: var(--accent-light); color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+.sb-day .dn { font-size: 11px; font-weight: 700; min-width: 18px; }
+.sb-day .dd { font-size: 11px; color: var(--text-secondary); margin-left: auto; }
+.sb-day.active .dd { color: var(--accent); opacity: 0.7; }
+.sb-divider { height: 1px; background: var(--border); margin: 18px 22px; }
+.sb-stats { padding: 0 22px; display: flex; flex-direction: column; gap: 10px; }
+.sb-stat { display: flex; justify-content: space-between; }
+.sb-stat-l { font-size: 12px; color: var(--text-secondary); }
+.sb-stat-v { font-size: 13px; font-weight: 600; }
+.it-main { margin-left: var(--sidebar-w); flex: 1; padding: 40px 48px 100px; max-width: calc(100% - var(--sidebar-w)); }
+.day-section { margin-bottom: 52px; animation: fadeUp 0.45s ease both; }
+.day-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; padding-bottom: 22px; border-bottom: 1px solid var(--border); gap: 16px; }
+.day-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 5px; }
+.day-title { font-family: 'DM Serif Display', serif; font-size: 26px; line-height: 1.2; }
+.day-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 5px; }
+.weather-badge { display: flex; align-items: center; gap: 7px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 14px; font-size: 13px; flex-shrink: 0; }
+.weather-icon { font-size: 19px; }
+.weather-temp { font-weight: 600; }
+.weather-desc { color: var(--text-secondary); font-size: 11px; }
+.day-strip { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 26px; overflow: hidden; }
+.strip-item { flex: 1; padding: 14px 10px; text-align: center; border-right: 1px solid var(--border); }
+.strip-item:last-child { border-right: none; }
+.strip-val { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+.strip-lbl { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+.timeline { position: relative; }
+.timeline::before { content: ''; position: absolute; left: 16px; top: 0; bottom: 0; width: 1.5px; background: linear-gradient(to bottom, var(--accent-light), var(--border) 85%, transparent); }
+.t-event { display: flex; gap: 18px; margin-bottom: 4px; position: relative; }
+.t-time-col { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 34px; padding-top: 16px; }
+.t-dot { width: 13px; height: 13px; border-radius: 50%; border: 2.5px solid var(--surface); box-shadow: 0 0 0 1.5px var(--border); background: var(--bg); flex-shrink: 0; z-index: 1; }
+.t-dot.meal { background: #F4A261; box-shadow: 0 0 0 1.5px #F4A261; }
+.t-dot.travel { background: var(--text-secondary); box-shadow: 0 0 0 1.5px var(--text-secondary); }
+.t-dot.sight { background: var(--accent); box-shadow: 0 0 0 1.5px var(--accent); }
+.t-dot.hotel { background: #5B8DB8; box-shadow: 0 0 0 1.5px #5B8DB8; }
+.t-dot.end { background: #B0A898; box-shadow: 0 0 0 1.5px #B0A898; }
+.t-connector { width: 1.5px; flex: 1; min-height: 14px; background: var(--border); margin: 2px 0; }
+.t-body { flex: 1; padding-bottom: 6px; }
+.t-card { background: var(--surface); border: 1px solid var(--border); border-radius: 13px; padding: 14px 18px; transition: border-color 0.2s, box-shadow 0.2s, transform 0.18s; }
+.t-card:hover { border-color: #d0c9c2; box-shadow: 0 4px 14px rgba(0,0,0,0.055); transform: translateY(-1px); }
+.t-card.travel-card { background: var(--bg); border-style: dashed; border-color: #D5CFC9; padding: 9px 14px; }
+.t-card.travel-card:hover { transform: none; box-shadow: none; }
+.t-top { display: flex; align-items: center; gap: 7px; margin-bottom: 3px; }
+.t-time { font-size: 11px; font-weight: 700; color: var(--text-secondary); letter-spacing: 0.5px; min-width: 48px; }
+.t-tag { font-size: 10px; font-weight: 700; letter-spacing: 1px; padding: 2px 7px; border-radius: 100px; }
+.tag-meal { background: #FEF3E2; color: #D47B20; }
+.tag-sight { background: var(--accent-light); color: var(--accent); }
+.tag-travel { background: #F0EFEE; color: var(--text-secondary); }
+.tag-hotel { background: #EBF2FA; color: #3A6E9E; }
+.tag-end { background: #F5F3F0; color: #7A7470; }
+.t-name { font-size: 14px; font-weight: 600; line-height: 1.3; }
+.t-desc { font-size: 13px; color: var(--text-secondary); margin-top: 3px; line-height: 1.55; }
+.t-places-badge { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.t-details { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.maps-link { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--text-secondary); text-decoration: none; margin-top: 7px; transition: color 0.15s; }
+.maps-link:hover { color: var(--accent); }
+.t-pill { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-secondary); }
+.travel-row { display: flex; align-items: center; gap: 9px; }
+.travel-dur { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: #F0EFEE; padding: 2px 9px; border-radius: 100px; }
+.tips-box { background: var(--accent-light); border: 1px solid rgba(45,106,79,0.15); border-radius: 13px; padding: 16px 20px; margin-top: 14px; margin-bottom: 24px; }
+.tips-title { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: var(--accent); margin-bottom: 8px; }
+.tips-list { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.tips-list li { font-size: 13px; color: #2a5c44; display: flex; gap: 7px; align-items: flex-start; line-height: 1.5; }
+.tips-list li::before { content: '→'; flex-shrink: 0; opacity: 0.6; }
+.city-divider { display: flex; align-items: center; gap: 14px; margin: 44px 0 38px; }
+.city-divider-line { flex: 1; height: 1px; background: var(--border); }
+.city-divider-label { font-family: 'DM Serif Display', serif; font-size: 14px; color: var(--text-secondary); white-space: nowrap; }
+.regen-row { display: flex; justify-content: flex-end; margin-top: 10px; margin-bottom: 28px; }
+.regen-btn { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: none; border: 1.5px solid var(--border); border-radius: 8px; padding: 6px 12px; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; }
+.regen-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.regen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+@media (max-width: 860px) {
+  .it-sidebar { display: none; }
+  .it-main { margin-left: 0; max-width: 100%; padding: 24px 18px 90px; }
+  #results-action-bar { padding: 10px 18px; }
+  .card { padding: 34px 26px; }
+  .two-col { grid-template-columns: 1fr; }
+  .budget-track { grid-template-columns: 1fr; }
+  .summary-grid { grid-template-columns: 1fr; }
+  .day-strip { flex-wrap: wrap; }
+}
+.autocomplete-wrap { position: relative; min-width: 0; }
+.autocomplete-wrap input { width: 100%; }
+.ac-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; z-index: 500; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.08); max-height: 220px; overflow-y: auto; }
+.ac-item { padding: 10px 14px; font-size: 13px; cursor: pointer; color: var(--text-primary); transition: background 0.15s; border-bottom: 1px solid var(--border); }
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover, .ac-item.ac-active { background: var(--accent-light); color: var(--accent); }
+@media (max-width: 640px) {
+  .city-row { padding: 14px 16px; }
+  .city-row-grid .gc-city,
+  .city-row-grid .gc-arrival,
+  .city-row-grid .gc-start,
+  .city-row-grid .gc-end { grid-column: span 12; }
+  .city-row-grid .gc-city { padding-right: 0; }
+  .flight-block-inputs { grid-template-columns: 1fr 90px; gap: 6px; }
+}
 
-  body {
-    font-family: system-ui, -apple-system, sans-serif;
-    background: #F5F2ED;
-    color: #111827;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+#lang-switcher { width: auto; padding: 6px 10px; font-size: 13px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-primary); cursor: pointer; font-family: 'DM Sans', sans-serif; flex-shrink: 0; }
+@media print {
+  /* Hide everything that isn't the itinerary */
+  #app-header, #onboarding-view, #loading-view,
+  .it-sidebar, .regen-row, .maps-link, .no-print,
+  #results-action-bar { display: none !important; }
 
-  nav {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    padding: 24px 40px;
-    display: flex;
-    justify-content: center;
-    z-index: 50;
-    background: #F5F2ED;
-    border-bottom: 1px solid rgba(0,0,0,0.06);
-  }
+  /* Reset page chrome */
+  body { background: #fff; color: #000; font-size: 11pt; }
+  #itinerary-view { display: block !important; padding-top: 0; }
+  .itinerary-layout { display: block; }
+  .it-main { margin-left: 0; max-width: 100%; padding: 16pt 24pt; }
 
-  .wordmark {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: 28px;
-    text-decoration: none;
-    line-height: 1;
+  /* Cards and surfaces */
+  .t-card, .tips-box, .day-strip, .weather-badge {
+    background: #fff !important;
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
   }
-  .wordmark .jou { font-weight: 700; color: #111827; }
-  .wordmark .nee { font-weight: 400; font-style: italic; color: #2D6147; }
+  .t-card:hover { transform: none !important; }
 
-  .hero {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 120px 24px 100px;
-  }
+  /* Typography */
+  .day-title { font-size: 16pt; }
+  .day-eyebrow { font-size: 8pt; }
+  .t-name { font-size: 11pt; }
+  .t-desc, .t-pill { font-size: 9.5pt; color: #444 !important; }
+  .tips-list li { font-size: 9.5pt; color: #2a5c44 !important; }
 
-  .icon-mark { margin-bottom: 32px; }
+  /* Page breaks — try to keep each day together */
+  .day-section { page-break-inside: avoid; break-inside: avoid; margin-bottom: 24pt; }
+  .city-divider { page-break-before: always; break-before: always; margin: 12pt 0; }
 
-  h1 {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-weight: 700;
-    font-size: clamp(40px, 6.5vw, 80px);
-    line-height: 1.06;
-    letter-spacing: -0.02em;
-    color: #111827;
-    max-width: 760px;
-    margin-bottom: 18px;
-  }
+  /* Remove hover/animation artifacts */
+  * { animation: none !important; transition: none !important; }
 
-  .sub {
-    font-size: 18px;
-    color: #6B7280;
-    margin-bottom: 52px;
-    max-width: 460px;
-    line-height: 1.65;
-  }
-
-  .cta {
-    background: #111827;
-    color: #F5F2ED;
-    font-size: 17px;
-    font-weight: 500;
-    padding: 18px 52px;
-    border-radius: 100px;
-    border: none;
-    cursor: pointer;
-    letter-spacing: -0.01em;
-    transition: background 0.2s, transform 0.15s;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .cta:hover { background: #2D6147; transform: translateY(-2px); }
-  .cta:active { transform: translateY(0); }
-  .cta .arr { transition: transform 0.2s; display: inline-block; }
-  .cta:hover .arr { transform: translateX(5px); }
-
-  .overlay {
-    position: fixed;
-    inset: 0;
-    background: transparent;
-    z-index: 100;
-    pointer-events: none;
-    transition: background 0.3s;
-  }
-  .overlay.open {
-    background: rgba(17,24,39,0.45);
-    pointer-events: all;
-  }
-
-  .sheet {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    background: #ffffff;
-    border-radius: 28px 28px 0 0;
-    padding: 16px 28px 48px;
-    max-width: 600px;
-    margin: 0 auto;
-    transform: translateY(110%);
-    transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
-    z-index: 101;
-    max-height: 92vh;
-    overflow-y: auto;
-  }
-  .sheet.open { transform: translateY(0); }
-
-  .handle {
-    width: 40px; height: 4px;
-    background: #E5E7EB;
-    border-radius: 2px;
-    margin: 0 auto 24px;
-  }
-
-  .sheet-title {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: 24px;
-    font-weight: 700;
-    color: #111827;
-    margin-bottom: 4px;
-  }
-  .sheet-sub {
-    font-size: 14px;
-    color: #9CA3AF;
-    margin-bottom: 28px;
-    line-height: 1.5;
-  }
-
-  .field { margin-bottom: 16px; }
-  .field label {
-    display: block;
-    font-size: 11px;
-    font-weight: 600;
-    color: #9CA3AF;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-bottom: 7px;
-  }
-  .field input {
-    width: 100%;
-    padding: 13px 16px;
-    border: 1px solid #E5E7EB;
-    border-radius: 14px;
-    font-size: 15px;
-    color: #111827;
-    background: #F9FAFB;
-    outline: none;
-    transition: border-color 0.2s, background 0.2s;
-    font-family: inherit;
-  }
-  .field input:focus {
-    border-color: #2D6147;
-    background: #fff;
-  }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 6px;
-  }
-  .chip {
-    padding: 8px 18px;
-    border-radius: 100px;
-    border: 1px solid #E5E7EB;
-    font-size: 13px;
-    font-family: inherit;
-    cursor: pointer;
-    background: #fff;
-    color: #374151;
-    transition: all 0.15s;
-  }
-  .chip.on {
-    background: #2D6147;
-    border-color: #2D6147;
-    color: #fff;
-  }
-
-  .submit {
-    width: 100%;
-    margin-top: 28px;
-    background: #111827;
-    color: #F5F2ED;
-    font-size: 16px;
-    font-weight: 500;
-    padding: 17px;
-    border-radius: 100px;
-    border: none;
-    cursor: pointer;
-    font-family: inherit;
-    letter-spacing: -0.01em;
-    transition: background 0.2s;
-  }
-  .submit:hover { background: #2D6147; }
+  /* Ensure links/route badges are readable */
+  .route-city { background: #e8f4ef !important; color: #1a1714 !important; }
+}
 </style>
 </head>
 <body>
-
-<nav>
-  <a href="#" class="wordmark"><span class="jou">Jou</span><span class="nee">nee</span></a>
-</nav>
-
-<section class="hero">
-  <div class="icon-mark">
-    <svg viewBox="0 0 40 64" style="height: 48px; width: auto;" xmlns="http://www.w3.org/2000/svg">
-      <path d="M 20 14 L 20 42 Q 20 53 10 53" stroke="#2D6147" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="20" cy="7" r="7" fill="#D85A30"/>
-      <circle cx="10" cy="53" r="7" fill="#2D6147"/>
-    </svg>
+<header id="app-header">
+  <a href="/" class="logo" aria-label="Home">Jou<span>nee</span></a>
+  <div id="onboarding-progress">
+    <div class="step-dot active" id="dot-0"></div>
+    <div class="step-dot" id="dot-1"></div>
+    <div class="step-dot" id="dot-2"></div>
+    <span class="step-label" id="step-label">Step 1 of 3</span>
+    <select id="lang-switcher" onchange="changeLang(this.value)">
+      <option value="en">🇬🇧 EN</option>
+      <option value="tr">🇹🇷 TR</option>
+      <option value="es">🇪🇸 ES</option>
+      <option value="fr">🇫🇷 FR</option>
+      <option value="de">🇩🇪 DE</option>
+      <option value="it">🇮🇹 IT</option>
+      <option value="pt">🇵🇹 PT</option>
+    </select>
   </div>
-  <h1>Your AI travel planner</h1>
-  <p class="sub">Enter your destination, dates, and what you enjoy. Jounee builds a complete day-by-day itinerary — real hotels, restaurants, and things to do.</p>
-  <button class="cta" onclick="openSheet()">
-    Plan my trip <span class="arr">&#8594;</span>
-  </button>
-</section>
-
-<div class="overlay" id="overlay" onclick="closeSheet()"></div>
-<div class="sheet" id="sheet">
-  <div class="handle"></div>
-  <p class="sheet-title">Where are you headed?</p>
-  <p class="sheet-sub">Fill in your trip details and your full itinerary will be ready in seconds.</p>
-
-  <div class="field">
-    <label>Destination city</label>
-    <input type="text" placeholder="e.g. Bali, Paris, Istanbul…">
+  <div id="itinerary-header-extras">
+    <div class="trip-route" id="header-route"></div>
+    <div class="plan-pills" id="header-plan-pills"></div>
   </div>
-  <div class="row">
-    <div class="field">
-      <label>Arrival date</label>
-      <input type="date">
-    </div>
-    <div class="field">
-      <label>Departure date</label>
-      <input type="date">
-    </div>
-  </div>
-  <div class="field">
-    <label>What are you into?</label>
-    <div class="chips">
-      <button class="chip" onclick="this.classList.toggle('on')">Food</button>
-      <button class="chip" onclick="this.classList.toggle('on')">Culture</button>
-      <button class="chip" onclick="this.classList.toggle('on')">Nature</button>
-      <button class="chip" onclick="this.classList.toggle('on')">Nightlife</button>
-      <button class="chip" onclick="this.classList.toggle('on')">Shopping</button>
-      <button class="chip" onclick="this.classList.toggle('on')">Beach</button>
-      <button class="chip" onclick="this.classList.toggle('on')">Active</button>
-      <button class="chip" onclick="this.classList.toggle('on')">Arts</button>
-    </div>
-  </div>
-
-  <button class="submit" onclick="submitForm()">Generate my itinerary</button>
+</header>
+<div id="results-action-bar">
+  <button class="btn-outline" id="switch-plan-btn" onclick="openPlanSwap()" data-i18n="switch_plan_btn" style="display:none;">🎯 Switch plan</button>
+  <button class="btn-outline" onclick="resetApp()" data-i18n="edit_trip">✏️ Edit trip</button>
+  <button class="btn-solid" onclick="window.print()" data-i18n="export_pdf">🖨 Export PDF</button>
 </div>
-
+<div id="onboarding-view">
+  <div class="card" id="step-0">
+    <div class="step-badge" data-i18n="step1_badge" data-i18n-upper>Step 1 · Destination</div>
+    <h2 data-i18n="step1_h2">Where are you headed?</h2>
+    <p class="subtitle" data-i18n="step1_subtitle">Add one or more cities. Pick the dates and roughly when you'll arrive.</p>
+    <div class="city-list" id="cityList">
+      <div class="city-row">
+        <button class="remove-btn" onclick="removeCity(this)" aria-label="Remove city">×</button>
+        <div class="city-row-grid">
+          <div class="gc-city">
+            <span class="city-row-label" data-i18n="city_country_header">City, Country</span>
+            <div class="autocomplete-wrap"><input type="text" placeholder="e.g. Paris, France" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder"/></div>
+          </div>
+          <div class="gc-arrival">
+            <span class="city-row-label" data-i18n="arrival_when">Arrival</span>
+            <select class="arrival-tod-select">
+              <option value="morning" data-i18n="tod_morning">☀️ Morning</option>
+              <option value="midday" data-i18n="tod_midday" selected>🌤️ Midday</option>
+              <option value="evening" data-i18n="tod_evening">🌙 Evening</option>
+            </select>
+          </div>
+          <div class="gc-start">
+            <span class="city-row-label" data-i18n="start_date">Start date</span>
+            <input type="date" class="city-start-date city-date-input"/>
+          </div>
+          <div class="gc-end">
+            <span class="city-row-label" data-i18n="end_date">End date</span>
+            <input type="date" class="city-end-date city-date-input"/>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="add-city-btn" onclick="addCity()" data-i18n="add_another_city">+ Add another city</button>
+    <span class="chip-label" data-i18n="budget_label">Budget</span>
+    <div class="chip-group" id="budget">
+      <div class="chip" onclick="singleChip(this,'budget')" data-i18n="budget_chip_low">$ Budget</div>
+      <div class="chip selected" onclick="singleChip(this,'budget')" data-i18n="budget_chip_mid">$$ Mid-range</div>
+      <div class="chip" onclick="singleChip(this,'budget')" data-i18n="budget_chip_high">$$$ Luxury</div>
+    </div>
+    <div class="nav-row"><span></span><button class="btn-next" onclick="if(validateStep0())goTo(1)" data-i18n="continue_btn">Continue →</button></div>
+  </div>
+  <div class="card" id="step-1" style="display:none;">
+    <div class="step-badge" data-i18n="step2_badge" data-i18n-upper>Step 2 · Your Group</div>
+    <h2 data-i18n="step2_h2">Who's travelling?</h2>
+    <p class="subtitle" data-i18n="step2_subtitle">We'll tailor dining, activities, and pacing to your group.</p>
+    <div class="two-col">
+      <div><label data-i18n="adults_label">Adults</label><div class="stepper"><button onclick="adjust('adults',-1)">−</button><span id="adults-val">2</span><button onclick="adjust('adults',1)">+</button></div></div>
+      <div><label data-i18n="children_label">Children</label><div class="stepper"><button onclick="adjust('kids',-1)">−</button><span id="kids-val">0</span><button onclick="adjust('kids',1)">+</button></div></div>
+    </div>
+    <span class="chip-label" data-i18n="trip_vibe">Trip vibe</span>
+    <div class="chip-group" id="tripType">
+      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_romantic">🥂 Romantic</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_adventure">⛺ Adventure</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_cultural">🏛️ Cultural</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_family">👨‍👩‍👧 Family</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_friends">🤝 Friends</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_relaxation">🌿 Relaxation</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_food_wine">🍽️ Food & Wine</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_party">🎉 Party</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="vibe_active">🏋️ Active</div>
+    </div>
+    <span class="chip-label" data-i18n="travel_pace">Travel pace</span>
+    <div class="chip-group" id="pace">
+      <div class="chip" onclick="singleChip(this,'pace')" data-i18n="pace_relaxed">🐌 Relaxed</div>
+      <div class="chip selected" onclick="singleChip(this,'pace')" data-i18n="pace_balanced">⚖️ Balanced</div>
+      <div class="chip" onclick="singleChip(this,'pace')" data-i18n="pace_packed">⚡ Packed</div>
+    </div>
+    <div class="nav-row"><button class="btn-back" onclick="goTo(0)" data-i18n="back_btn">← Back</button><button class="btn-next" onclick="goTo(2)" data-i18n="continue_btn">Continue →</button></div>
+  </div>
+  <div class="card" id="step-2" style="display:none;">
+    <div class="step-badge" data-i18n="step3_badge" data-i18n-upper>Step 3 · Preferences</div>
+    <h2 data-i18n="step3_h2">Final touches</h2>
+    <p class="subtitle" data-i18n="step3_subtitle">Tell us your dietary preferences, what you love, and anything else.</p>
+    <span class="chip-label" data-i18n="dietary_req">Dietary requirements</span>
+    <div class="chip-group" id="diet">
+      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_none">🥩 No restrictions</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_local_cuisine">🍲 Local cuisine</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_vegetarian">🥗 Vegetarian</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_vegan">🌱 Vegan</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_pescatarian">🐟 Pescatarian</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_gluten_free">🌾 Gluten-free</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_dairy_free">🥛 Dairy-free</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_kosher">✡️ Kosher</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="diet_halal">☪️ Halal</div>
+    </div>
+    <span class="chip-label" data-i18n="interests_label">Interests</span>
+    <div class="chip-group" id="interests">
+      <div class="chip" onclick="toggleChip(this)" data-i18n="interest_museums">🖼️ Museums & Art</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="interest_nature">🌳 Nature & Parks</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="interest_shopping">🛍️ Shopping</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="interest_theatre">🎭 Theatre & Shows</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="interest_photography">📸 Photography</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="interest_nightlife">🍺 Nightlife</div>
+      <div class="chip" onclick="toggleChip(this)" data-i18n="interest_history">🕌 History & Heritage</div>
+    </div>
+    <div>
+      <div class="toggle-row"><div class="toggle-info"><p data-i18n="access_title">Accessibility needs</p><small data-i18n="access_desc">Wheelchair accessible routes & venues</small></div><label class="toggle"><input type="checkbox" id="access"/><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div class="toggle-info"><p data-i18n="avoid_traps_title">Avoid tourist traps</p><small data-i18n="avoid_traps_desc">Prefer local, off-the-beaten-path spots</small></div><label class="toggle"><input type="checkbox" id="localOnly" checked/><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div class="toggle-info"><p data-i18n="indoor_alt_title">Indoor alternatives</p><small data-i18n="indoor_alt_desc">Backup plans for bad weather</small></div><label class="toggle"><input type="checkbox" id="indoor" checked/><span class="toggle-slider"></span></label></div>
+    </div>
+    <div class="field" style="margin-top:18px;">
+      <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:6px;"><span data-i18n="notes_label">Anything else we should know?</span> <span style="font-weight:400;opacity:.7" data-i18n="notes_optional">(optional)</span></label>
+      <textarea id="tripNotes" rows="4" data-i18n-ph="notes_placeholder" placeholder="e.g. We're celebrating a birthday, prefer quieter areas, travelling with a dog…" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;background:var(--surface);color:var(--text);box-sizing:border-box;"></textarea>
+    </div>
+    <button class="generate-btn" id="generateBtn" onclick="startGeneration()" data-i18n="generate_btn">✦ Generate My Itinerary</button>
+    <div class="nav-row" style="margin-top:14px;padding-top:14px;"><button class="btn-back" onclick="goTo(1)" data-i18n="back_btn">← Back</button><span></span></div>
+  </div>
+</div>
+<div id="journey-404-view" style="display:none;padding-top:var(--header-h);min-height:100vh;align-items:center;justify-content:center;">
+  <div class="card" style="max-width:520px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:8px;">🧭</div>
+    <h2 data-i18n="journey_404_title">Trip not found</h2>
+    <p class="subtitle" data-i18n="journey_404_subtitle">This link may have expired (free trips expire after 30 days) or never existed.</p>
+    <button class="btn-next" onclick="window.location.href='/'" data-i18n="journey_404_home_btn">Plan a new trip</button>
+  </div>
+</div>
+<div id="loading-view">
+  <div style="text-align:center;max-width:380px;padding:0 24px;">
+    <div class="loading-spinner"></div>
+    <div class="loading-title" data-i18n="loading_title">Crafting your itinerary…</div>
+    <p style="font-size:13px;color:var(--text-secondary);" data-i18n="loading_subtitle">Our AI is planning every hour of your trip.</p>
+    <div class="loading-steps">
+      <div class="loading-step active" id="ls-0"><div class="ls-dot"></div><span data-i18n="loading_step_0">Researching destinations & attractions</span></div>
+      <div class="loading-step" id="ls-1"><div class="ls-dot"></div><span data-i18n="loading_step_1">Selecting restaurants & hidden gems</span></div>
+      <div class="loading-step" id="ls-2"><div class="ls-dot"></div><span data-i18n="loading_step_2">Calculating travel times & logistics</span></div>
+      <div class="loading-step" id="ls-3"><div class="ls-dot"></div><span data-i18n="loading_step_3">Adding local tips & weather context</span></div>
+      <div class="loading-step" id="ls-4"><div class="ls-dot"></div><span data-i18n="loading_step_4">Finalising your day-by-day plan</span></div>
+    </div>
+  </div>
+</div>
+<div id="plan-swap-modal" class="modal-backdrop" style="display:none;" onclick="if(event.target===this)closePlanSwap()">
+  <div class="modal-card">
+    <h3 data-i18n="modal_swap_title">Switch your trip plan</h3>
+    <p class="modal-subtitle" data-i18n="modal_swap_subtitle">Pick a different plan to regenerate your trip.</p>
+    <div id="plan-swap-options"></div>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closePlanSwap()" data-i18n="modal_cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+<div id="itinerary-view">
+  <div class="itinerary-layout">
+    <aside class="it-sidebar" id="itSidebar"></aside>
+    <main class="it-main" id="itMain"></main>
+  </div>
+</div>
 <script>
-  function openSheet() {
-    document.getElementById('overlay').classList.add('open');
-    document.getElementById('sheet').classList.add('open');
-    document.body.style.overflow = 'hidden';
+let currentLang = 'en';
+const langNames = { en: 'English', tr: 'Turkish', es: 'Spanish', fr: 'French', de: 'German', it: 'Italian', pt: 'Portuguese' };
+const LOCALE_TAG = { tr: 'tr-TR', de: 'de-DE', fr: 'fr-FR', es: 'es-ES', it: 'it-IT', pt: 'pt-PT', en: 'en-US' };
+function t(key) { return (translations[currentLang] || translations['en'])[key] || translations['en'][key] || key; }
+function u(str) { return str.toLocaleUpperCase(LOCALE_TAG[currentLang] || 'en-US'); }
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => { const v = t(el.dataset.i18n); el.textContent = el.hasAttribute('data-i18n-upper') ? u(v) : v; });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+}
+function changeLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('jounee_lang', lang);
+  const switcher = document.getElementById('lang-switcher');
+  if (switcher) switcher.value = lang;
+  applyTranslations();
+  document.getElementById('step-label').textContent = t('step_of').replace('{n}', state.currentStep + 1);
+}
+const state = { currentStep: 0, adults: 2, kids: 0, tripData: null, paywallOverride: null };
+function goTo(step) {
+  document.getElementById(`step-${state.currentStep}`).style.display = 'none';
+  state.currentStep = step;
+  const card = document.getElementById(`step-${step}`);
+  card.style.display = 'block'; card.style.animation = 'none';
+  requestAnimationFrame(() => card.style.animation = '');
+  updateDots();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function updateDots() {
+  for (let i = 0; i < 3; i++) {
+    const d = document.getElementById(`dot-${i}`); d.className = 'step-dot';
+    if (i < state.currentStep) d.classList.add('done');
+    else if (i === state.currentStep) d.classList.add('active');
   }
-  function closeSheet() {
-    document.getElementById('overlay').classList.remove('open');
-    document.getElementById('sheet').classList.remove('open');
-    document.body.style.overflow = '';
+  document.getElementById('step-label').textContent = t('step_of').replace('{n}', state.currentStep + 1);
+}
+function addCity() {
+  const row = document.createElement('div'); row.className = 'city-row';
+  row.innerHTML = `<button class="remove-btn" onclick="removeCity(this)" aria-label="Remove city">×</button>
+    <div class="city-row-grid">
+      <div class="gc-city">
+        <span class="city-row-label" data-i18n="city_country_header">${t('city_country_header')}</span>
+        <div class="autocomplete-wrap"><input type="text" placeholder="${t('city_placeholder_2')}" class="city-input" autocomplete="off" data-i18n-ph="city_placeholder_2"/></div>
+      </div>
+      <div class="gc-arrival">
+        <span class="city-row-label" data-i18n="arrival_when">${t('arrival_when')}</span>
+        <select class="arrival-tod-select">
+          <option value="morning" data-i18n="tod_morning">${t('tod_morning')}</option>
+          <option value="midday" data-i18n="tod_midday" selected>${t('tod_midday')}</option>
+          <option value="evening" data-i18n="tod_evening">${t('tod_evening')}</option>
+        </select>
+      </div>
+      <div class="gc-start">
+        <span class="city-row-label" data-i18n="start_date">${t('start_date')}</span>
+        <input type="date" class="city-start-date city-date-input"/>
+      </div>
+      <div class="gc-end">
+        <span class="city-row-label" data-i18n="end_date">${t('end_date')}</span>
+        <input type="date" class="city-end-date city-date-input"/>
+      </div>
+    </div>`;
+  document.getElementById('cityList').appendChild(row);
+  initAutocomplete(row.querySelector('.city-input'));
+}
+function removeCity(btn) { if (document.querySelectorAll('.city-row').length > 1) btn.closest('.city-row').remove(); }
+function adjust(key, delta) { state[key] = Math.max(key === 'adults' ? 1 : 0, state[key] + delta); document.getElementById(`${key}-val`).textContent = state[key]; }
+function toggleChip(el) { el.classList.toggle('selected'); }
+function singleChip(el, groupId) { el.closest('.chip-group').querySelectorAll('.chip').forEach(c => c.classList.remove('selected')); el.classList.add('selected'); }
+function calcLatestEndTime(departureTime, hasAirport) {
+  if (!departureTime) return null;
+  const [h, m] = departureTime.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  const depMins = h * 60 + m;
+  const bufferMins = hasAirport ? (3 * 60 + 45) : 30;
+  const latestMins = depMins - bufferMins;
+  if (latestMins < 0) return null;
+  const lh = Math.floor(latestMins / 60);
+  const lm = latestMins % 60;
+  const period = lh < 12 ? 'AM' : 'PM';
+  const displayH = lh % 12 || 12;
+  return `${displayH}:${String(lm).padStart(2, '0')} ${period}`;
+}
+function to12h(t) {
+  if (!t) return '';
+  if (/AM|PM/i.test(t)) return t;
+  const [h, m] = t.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return t;
+  const period = h < 12 ? 'AM' : 'PM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+function daysBetween(startISO, endISO) {
+  if (!startISO || !endISO) return 0;
+  const a = new Date(startISO + 'T00:00:00');
+  const b = new Date(endISO + 'T00:00:00');
+  if (isNaN(a.getTime()) || isNaN(b.getTime())) return 0;
+  // Inclusive day count: May 12 → May 15 = 4 activity days.
+  const diff = Math.round((b - a) / 86400000) + 1;
+  return Math.max(1, diff);
+}
+function addDaysISO(startISO, days) {
+  if (!startISO) return '';
+  const d = new Date(startISO + 'T00:00:00');
+  if (isNaN(d.getTime())) return '';
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+function getTripProfile() {
+  const rows = [...document.querySelectorAll('.city-row')];
+  const cityData = rows.map(row => {
+    const cityStartDate = row.querySelector('.city-start-date')?.value || '';
+    const cityEndDate = row.querySelector('.city-end-date')?.value || '';
+    return {
+      city: row.querySelector('.city-input')?.value.trim() || '',
+      cityStartDate,
+      cityEndDate,
+      days: daysBetween(cityStartDate, cityEndDate),
+      arrivalTimeOfDay: row.querySelector('.arrival-tod-select')?.value || 'midday'
+    };
+  }).filter(d => d.city);
+  return {
+    cityData,
+    cities: cityData.map(d => d.city),
+    days: cityData.map(d => d.days),
+    cityStartDates: cityData.map(d => d.cityStartDate),
+    cityEndDates: cityData.map(d => d.cityEndDate),
+    arrivalTimeOfDay: cityData.map(d => d.arrivalTimeOfDay),
+    lats: rows.filter(r => r.querySelector('.city-input')?.value.trim()).map(r => parseFloat(r.dataset.lat) || 0),
+    lons: rows.filter(r => r.querySelector('.city-input')?.value.trim()).map(r => parseFloat(r.dataset.lon) || 0),
+    startDate: cityData[0]?.cityStartDate || '',
+    endDate: cityData[cityData.length - 1]?.cityEndDate || '',
+    adults: state.adults, kids: state.kids,
+    tripTypes: [...document.querySelectorAll('#tripType .chip.selected')].map(c => c.textContent.trim()),
+    pace: document.querySelector('#pace .chip.selected')?.textContent.trim() || 'Balanced',
+    budget: document.querySelector('#budget .chip.selected')?.textContent.trim() || '$$ Mid-range',
+    diet: [...document.querySelectorAll('#diet .chip.selected')].map(c => c.textContent.trim()),
+    interests: [...document.querySelectorAll('#interests .chip.selected')].map(c => c.textContent.trim()),
+    accessibility: document.getElementById('access').checked,
+    localOnly: document.getElementById('localOnly').checked,
+    indoorAlt: document.getElementById('indoor').checked,
+    notes: document.getElementById('tripNotes')?.value.trim() || ''
+  };
+}
+function buildSummary() {
+  const p = getTripProfile();
+  const routeHtml = p.cities.length
+    ? p.cities.map((c, i) => {
+        const days = p.days[i];
+        const arrT = p.arrivalTimes?.[i] || '';
+        const arrA = p.airports?.[i] || '';
+        const depT = p.cityData?.[i]?.departureTime || '';
+        const depA = p.cityData?.[i]?.departureAirport || '';
+        const arrIcon = p.flightsBooked === false ? '⏱' : '🛬';
+        const depIcon = p.flightsBooked === false ? '⏱' : '🛫';
+        const legParts = [`${days}d`];
+        if (arrT) legParts.push(`${arrIcon} ${arrT}${arrA ? ' ' + arrA : ''}`);
+        if (depT) legParts.push(`${depIcon} ${depT}${depA ? ' ' + depA : ''}`);
+        return `${i > 0 ? '<span class="route-arrow">→</span>' : ''}<span class="city-tag">${c || '—'} <span style="opacity:.6;font-weight:400">${legParts.join(' · ')}</span></span>`;
+      }).join('')
+    : `<span style="color:var(--text-secondary);font-size:13px;">${t('sum_no_cities')}</span>`;
+  document.getElementById('summaryRoute').innerHTML = routeHtml;
+
+  const totalDays = p.days.reduce((a,b)=>a+b,0);
+  const groupStr = `${p.adults} ${p.adults>1?t('adults_p'):t('adult_s')}${p.kids>0?`, ${p.kids} ${p.kids>1?t('kids_p'):t('kid_s')}`:' '+t('no_kids')}`;
+
+  let startDateStr = '—';
+  if (p.startDate) {
+    const d = new Date(p.startDate);
+    if (!isNaN(d.getTime())) {
+      startDateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
   }
-  function submitForm() {
-    const dest = document.querySelector('input[type="text"]').value;
-    const arrival = document.querySelectorAll('input[type="date"]')[0].value;
-    const departure = document.querySelectorAll('input[type="date"]')[1].value;
-    const interests = [...document.querySelectorAll('.chip.on')].map(c => c.textContent).join(',');
-    const params = new URLSearchParams({ dest, arrival, departure, interests });
-    window.location.href = '/app.html?' + params.toString();
+
+  const flightsHtml = p.flightsBooked === true
+    ? `<span class="flights-pill booked">${t('sum_flights_booked')}</span>`
+    : p.flightsBooked === false
+      ? `<span class="flights-pill rough">${t('sum_flights_rough')}</span>`
+      : '—';
+
+  const prefs = [];
+  if (p.accessibility) prefs.push(`♿ ${t('access_title')}`);
+  if (p.localOnly) prefs.push(`🌿 ${t('avoid_traps_title')}`);
+  if (p.indoorAlt) prefs.push(`🌧 ${t('indoor_alt_title')}`);
+  const prefsHtml = prefs.length
+    ? prefs.map(s => `<span class="pref-pill">${s}</span>`).join('')
+    : `<span style="color:var(--text-secondary);font-size:13px;">${t('sum_prefs_none')}</span>`;
+
+  document.getElementById('summaryGrid').innerHTML =
+    `<div class="summary-item"><div class="s-label">${u(t('sum_group'))}</div><div class="s-value">${groupStr}</div></div>
+    <div class="summary-item"><div class="s-label">${u(t('sum_duration'))}</div><div class="s-value">${totalDays} ${t('days_unit')}</div></div>
+    <div class="summary-item"><div class="s-label">${u(t('start_date'))}</div><div class="s-value">${startDateStr}</div></div>
+    <div class="summary-item"><div class="s-label">${u(t('sum_flights'))}</div><div class="s-value">${flightsHtml}</div></div>
+    <div class="summary-item"><div class="s-label">${u(t('sum_budget'))}</div><div class="s-value">${p.budget}</div></div>
+    <div class="summary-item"><div class="s-label">${u(t('sum_pace'))}</div><div class="s-value">${p.pace}</div></div>
+    <div class="summary-item"><div class="s-label">${u(t('sum_stay'))}</div><div class="s-value">${p.accom || '—'}</div></div>
+    <div class="summary-item"><div class="s-label">${u(t('sum_interests'))}</div><div class="s-value">${p.interests.join(', ')||t('not_specified')}</div></div>
+    <div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_vibe'))}</div><div class="s-value">${p.tripTypes.join(', ')||t('not_specified')}</div></div>
+    <div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_diet'))}</div><div class="s-value">${p.diet.join(', ')||t('no_restrictions')}</div></div>
+    <div class="summary-item" style="grid-column:1/-1"><div class="s-label">${u(t('sum_preferences'))}</div><div class="s-value">${prefsHtml}</div></div>`;
+}
+const normalizeVenueName = s => (s || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
+const CANONICAL_THEMES = ['culture','history','art','food','nightlife','beach','nature','wellness','adventure','shopping','family','romantic','relaxation','active'];
+const THEME_SYNONYMS = {
+  culture: ['culture','cultural','heritage','temple','temples','tradition','traditional','museum','museums'],
+  history: ['history','historic','historical','ancient','ruins','archaeology','archaeological'],
+  art: ['art','arts','gallery','galleries','artist','artistic','design'],
+  food: ['food','foodie','culinary','cuisine','dining','eat','gastronomy','gastronomic','restaurant','restaurants'],
+  nightlife: ['nightlife','party','club','clubs','bar','bars','dance','dancing','disco','music'],
+  beach: ['beach','beaches','sea','ocean','swim','swimming','sunbathe','coast','coastal','seaside'],
+  nature: ['nature','natural','outdoor','outdoors','scenery','landscape','forest','mountain','mountains','lake'],
+  wellness: ['wellness','spa','yoga','meditation','retreat','calm','peaceful','detox','mindful','mindfulness'],
+  adventure: ['adventure','adventurous','thrill','thrilling','diving','surfing','surf','rafting','zipline','extreme'],
+  shopping: ['shopping','shop','shops','markets','market','boutique','boutiques','mall'],
+  family: ['family','kids','children','family-friendly','familyfriendly','kid-friendly'],
+  romantic: ['romantic','romance','couple','couples','honeymoon','anniversary'],
+  relaxation: ['relax','relaxing','relaxation','slow','quiet','laid-back','laidback','chill','chilled'],
+  active: ['active','sport','sports','sporty','hiking','hike','biking','cycling','running','fitness','gym','workout']
+};
+function normalizeToThemes(tags) {
+  const lowered = (tags || []).map(t => (t || '').toLowerCase());
+  const set = new Set();
+  for (const [theme, syns] of Object.entries(THEME_SYNONYMS)) {
+    for (const tag of lowered) {
+      if (syns.some(s => tag.includes(s))) { set.add(theme); break; }
+    }
   }
+  return set;
+}
+function scoreOption(option, profile) {
+  const userThemes = normalizeToThemes([...(profile.interests||[]), ...(profile.tripTypes||[])]);
+  const optThemes = new Set((option.themes||[]).filter(t => CANONICAL_THEMES.includes(t)));
+  let score = 0;
+  for (const t of optThemes) if (userThemes.has(t)) score += 1;
+  const legs = option.plan?.length || 1;
+  const pace = (profile.pace || '').toLowerCase();
+  if (pace.includes('pack') && legs > 1) score += 0.5;
+  if ((pace.includes('laid') || pace.includes('slow')) && legs === 1) score += 0.5;
+  if ((profile.kids || 0) > 0) {
+    if (optThemes.has('nightlife')) score -= 1;
+    if (optThemes.has('adventure')) score -= 0.3;
+    if (optThemes.has('family')) score += 0.5;
+  }
+  return score;
+}
+function pickBestOption(options, profile) {
+  if (!options || !options.length) return null;
+  if (options.length === 1) return { option: options[0], score: 0 };
+  const scored = options.map(o => ({ option: o, score: scoreOption(o, profile) }));
+  scored.sort((a, b) => b.score - a.score);
+  return scored[0];
+}
+async function fetchPlanForCity(cityName, days, profile, extras = {}) {
+  const rawNotes = profile.notes || '';
+  const notesCapped = rawNotes.slice(0, 500);
+  if (rawNotes.length > 500) console.warn(`[plan] notes truncated from ${rawNotes.length} to 500 chars`);
+  try {
+    const res = await fetch('/api/plan-destination', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        city: cityName,
+        days,
+        interests: profile.interests || [],
+        tripTypes: profile.tripTypes || [],
+        pace: profile.pace,
+        budget: profile.budget,
+        kids: profile.kids || 0,
+        adults: profile.adults || 2,
+        diet: profile.diet || [],
+        startDate: extras.cityStartDate || '',
+        endDate: extras.cityEndDate || '',
+        accessibility: !!profile.accessibility,
+        localOnly: !!profile.localOnly,
+        indoorAlt: !!profile.indoorAlt,
+        notes: notesCapped,
+        arrivalTimeOfDay: extras.arrivalTimeOfDay || ''
+      })
+    });
+    if (!res.ok) {
+      console.warn(`[plan] fetch failed for ${cityName}: HTTP ${res.status}`);
+      return null;
+    }
+    const data = await res.json();
+    if (!data.options || !data.options.length) {
+      console.warn(`[plan] no valid options for ${cityName}`, data);
+      return null;
+    }
+    return data;
+  } catch (e) {
+    console.warn(`[plan] network error for ${cityName}`, e);
+    return null;
+  }
+}
+function buildLegs(profile, planByCity) {
+  const legs = [];
+  profile.cities.forEach((cityName, ci) => {
+    const cityPlan = planByCity?.[cityName];
+    const picked = cityPlan?.picked;
+    const userArrTod = profile.arrivalTimeOfDay?.[ci] || '';
+    const cityStart = profile.cityStartDates?.[ci] || '';
+    const cityEnd = profile.cityEndDates?.[ci] || '';
+    if (!picked?.plan?.length) {
+      legs.push({
+        parentCity: cityName,
+        subArea: cityName,
+        days: profile.days?.[ci] || 0,
+        arrivalTimeOfDay: userArrTod,
+        legStartDate: cityStart,
+        legEndDate: cityEnd,
+        isFirstLegOfCity: true,
+        isLastLegOfCity: true
+      });
+      return;
+    }
+    // Walk the cursor inclusively: a leg of N days that starts on May 12
+    // ends on May 12 + (N - 1). The next leg starts on May 12 + N.
+    let cursor = cityStart;
+    picked.plan.forEach((p, pi) => {
+      const isFirst = pi === 0;
+      const isLast = pi === picked.plan.length - 1;
+      const daysThis = Number(p.days) || 0;
+      const legStart = cursor || '';
+      const legEnd = addDaysISO(legStart, Math.max(0, daysThis - 1));
+      legs.push({
+        parentCity: cityName,
+        subArea: p.subArea,
+        days: daysThis,
+        arrivalTimeOfDay: isFirst ? userArrTod : '',
+        legStartDate: legStart,
+        legEndDate: legEnd,
+        isFirstLegOfCity: isFirst,
+        isLastLegOfCity: isLast
+      });
+      cursor = addDaysISO(legStart, daysThis);
+    });
+  });
+  return legs;
+}
+async function geocodeSubArea(subArea, parentCity) {
+  try {
+    const q = parentCity && parentCity !== subArea ? `${subArea}, ${parentCity}` : subArea;
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&limit=1&format=json`);
+    const data = await res.json();
+    if (data[0]) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+  } catch {}
+  return null;
+}
+async function resolveCityCoords(profile) {
+  const out = [];
+  for (let i = 0; i < profile.cities.length; i++) {
+    let lat = profile.lats?.[i] || 0;
+    let lon = profile.lons?.[i] || 0;
+    if (!lat || !lon) {
+      try {
+        const geo = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(profile.cities[i])}&limit=1&format=json`);
+        const gd = await geo.json();
+        if (gd[0]) { lat = parseFloat(gd[0].lat); lon = parseFloat(gd[0].lon); }
+      } catch {}
+    }
+    out.push({ name: profile.cities[i], lat, lon });
+  }
+  return out;
+}
+async function fetchCandidates(profile, explicitCities) {
+  const cities = explicitCities || (await resolveCityCoords(profile));
+  const res = await fetch('/api/candidates', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      cities: cities.filter(c => c.lat && c.lon),
+      interests: profile.interests || [],
+      tripTypes: profile.tripTypes || [],
+      kids: profile.kids || 0
+    })
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.candidates || null;
+}
+async function fetchCandidatesForLegs(profile, legs) {
+  // Resolve coords per unique sub-area (parent-city-qualified geocode).
+  const uniqueSubAreas = new Map();
+  for (const leg of legs) {
+    const key = leg.subArea;
+    if (uniqueSubAreas.has(key)) continue;
+    let coords = null;
+    // Prefer user-typed city coords if subArea matches the parent city (single-base fallback).
+    if (leg.subArea === leg.parentCity) {
+      const ci = profile.cities.indexOf(leg.parentCity);
+      const lat = profile.lats?.[ci] || 0;
+      const lon = profile.lons?.[ci] || 0;
+      if (lat && lon) coords = { lat, lon };
+    }
+    if (!coords) coords = await geocodeSubArea(leg.subArea, leg.parentCity);
+    uniqueSubAreas.set(key, coords);
+  }
+  const citiesArg = [...uniqueSubAreas.entries()]
+    .filter(([_, c]) => c)
+    .map(([name, c]) => ({ name, lat: c.lat, lon: c.lon }));
+  if (!citiesArg.length) return null;
+  return fetchCandidates(profile, citiesArg);
+}
+function shortAddr(addr) {
+  if (!addr) return '';
+  return addr.split(',').slice(0, 3).map(s => s.trim()).filter(Boolean).join(', ');
+}
+function formatReviewCount(n) {
+  if (!n) return '0';
+  if (n >= 10000) return `${Math.round(n/1000)}k`;
+  if (n >= 1000) return `${(n/1000).toFixed(1)}k`;
+  return String(n);
+}
+function shuffleInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function formatCityMenu(cityName, buckets) {
+  if (!buckets) return '';
+  const labels = {
+    restaurant: 'Restaurants',
+    cafe: 'Cafes',
+    attraction: 'Sights',
+    museum: 'Museums',
+    bar: 'Bars',
+    nightclub: 'Nightclubs',
+    gym: 'Gyms',
+    park: 'Parks/Beaches'
+  };
+  const FOOD_KEYS = new Set(['restaurant', 'cafe', 'bar']);
+  const lines = [`=== ${cityName} ===`];
+  for (const [key, label] of Object.entries(labels)) {
+    const items = buckets[key];
+    if (!items?.length) continue;
+    lines.push(`${label}:`);
+    const showFood = FOOD_KEYS.has(key);
+    // Shuffle a copy so each call produces a different ordering — encourages
+    // Claude to vary picks across regenerations and across sub-areas.
+    const shuffled = shuffleInPlace([...items]);
+    for (const it of shuffled) {
+      const price = showFood && it.priceLevel ? ` ${it.priceLevel}` : '';
+      const cuisine = showFood && it.cuisine ? ` ${it.cuisine}` : '';
+      const rating = it.rating ? ` [${it.rating}★·${formatReviewCount(it.reviews)}]` : '';
+      const addr = it.address ? ` — ${shortAddr(it.address)}` : '';
+      lines.push(`  -${price}${cuisine} ${it.name}${rating}${addr}`);
+    }
+  }
+  return lines.join('\n');
+}
+function formatCandidatesMenu(candidates) {
+  if (!candidates || !Object.keys(candidates).length) return '';
+  const cityBlocks = [];
+  for (const [cityName, buckets] of Object.entries(candidates)) {
+    const block = formatCityMenu(cityName, buckets);
+    if (block) cityBlocks.push(block);
+  }
+  if (!cityBlocks.length) return '';
+  return `AVAILABLE VENUES — pick ONLY names from this list. Copy each venue name EXACTLY as written (matching spelling, punctuation, and language). Never invent venues, never substitute. For each hotel/restaurant/cafe/bar/sight/museum/gym/park event, the event's "name" field MUST match one of the names below.\n\n${cityBlocks.join('\n\n')}\n`;
+}
+function validateStep0() {
+  const profile = getTripProfile();
+  if (!profile.cities.length) { alert(t('alert_add_city')); return false; }
+  for (let i = 0; i < profile.cities.length; i++) {
+    const s = profile.cityStartDates?.[i] || '';
+    const e = profile.cityEndDates?.[i] || '';
+    if (!s || !e) { alert(t('alert_dates_required')); return false; }
+    if (e <= s) { alert(t('alert_end_before_start').replace('{city}', profile.cities[i])); return false; }
+  }
+  return true;
+}
+async function startGeneration() {
+  if (!validateStep0()) return;
+  const profile = getTripProfile();
+  document.getElementById('onboarding-view').style.display = 'none';
+  document.getElementById('onboarding-progress').style.display = 'none';
+  document.getElementById('loading-view').style.display = 'flex';
+  document.getElementById('lang-switcher').style.display = 'none';
+  let si = 0;
+  const stepInterval = setInterval(() => {
+    if (si > 0) { const prev = document.getElementById(`ls-${si-1}`); if(prev) prev.classList.replace('active','done'); }
+    const cur = document.getElementById(`ls-${si}`); if (cur) cur.classList.add('active');
+    si++; if (si >= 5) clearInterval(stepInterval);
+  }, 900);
+  try {
+    // 1. Plan per city (in parallel). Each city gets its own themed options; we score + pick.
+    const planByCity = {};
+    await Promise.all(profile.cities.map(async (cityName, ci) => {
+      const days = profile.days?.[ci] || 0;
+      const extras = {
+        arrivalTimeOfDay: profile.arrivalTimeOfDay?.[ci] || '',
+        cityStartDate: profile.cityStartDates?.[ci] || '',
+        cityEndDate: profile.cityEndDates?.[ci] || ''
+      };
+      const planResp = await fetchPlanForCity(cityName, days, profile, extras);
+      if (!planResp || !planResp.options?.length) return;
+      const ranked = planResp.options
+        .map(o => ({ option: o, score: scoreOption(o, profile) }))
+        .sort((a, b) => b.score - a.score);
+      const best = ranked[0];
+      if (!best) return;
+      planByCity[cityName] = {
+        hasDistinctSubAreas: !!planResp.hasDistinctSubAreas,
+        options: planResp.options,
+        ranked,
+        picked: best.option,
+        pickedScore: best.score
+      };
+      const rows = ranked.map(({ option, score }) => ({
+        picked: option === best.option ? '✓' : '',
+        title: option.title,
+        score: score.toFixed(2),
+        themes: (option.themes || []).join(', '),
+        plan: (option.plan || []).map(p => `${p.subArea}(${p.days}d)`).join(' → ')
+      }));
+      console.group(`[plan] ${cityName} — picked "${best.option.title}" (score ${best.score.toFixed(2)})`);
+      console.table(rows);
+      console.groupCollapsed('rationales');
+      ranked.forEach(({ option }) => {
+        const tag = option === best.option ? ' ✓ PICKED' : '';
+        console.log(`${option.id}${tag}:`);
+        (option.plan || []).forEach(p => {
+          console.log(`  • ${p.subArea} (${p.days}d) — ${p.rationale || '(no rationale)'}`);
+        });
+      });
+      console.groupEnd();
+      console.groupEnd();
+    }));
+    state.plan = { byCity: planByCity };
+
+    // 2. Build legs from plans (sub-areas as trip legs). Fallback: one leg = user's city.
+    const legs = buildLegs(profile, planByCity);
+    const plannedCities = Object.keys(planByCity);
+    const unplannedCities = profile.cities.filter(c => !plannedCities.includes(c));
+    if (unplannedCities.length) console.warn('[plan] falling back to single-base for unplanned cities:', unplannedCities);
+    console.debug('[legs]', legs.map(l => `${l.subArea}(${l.days}d ${l.legStartDate || '?'}→${l.legEndDate || '?'}${l.arrivalTimeOfDay ? ' ' + l.arrivalTimeOfDay : ''})`).join(' → '));
+
+    // 3. Fetch candidates per sub-area in parallel, at tight radius.
+    let candidates = null;
+    try { candidates = await fetchCandidatesForLegs(profile, legs); } catch (e) { console.warn('[candidates] fetch failed, falling back to free-form', e); }
+    if (candidates) {
+      const emptySubAreas = legs.filter(l => {
+        const bk = candidates[l.subArea];
+        return !bk || Object.values(bk).every(arr => !arr?.length);
+      }).map(l => l.subArea);
+      if (emptySubAreas.length) console.warn('[candidates] empty/sparse result for sub-areas:', emptySubAreas);
+    }
+    state.candidates = candidates || null;
+    const menu = formatCandidatesMenu(candidates);
+
+    // 4. Call itinerary Claude with legs + menu.
+    const itinerary = await callClaude(profile, null, menu, legs);
+    clearInterval(stepInterval);
+    for (let i = 0; i < 5; i++) { const el = document.getElementById(`ls-${i}`); el?.classList.remove('active'); el?.classList.add('done'); }
+    await new Promise(r => setTimeout(r, 500));
+    state.tripData = { profile, itinerary, candidates, planByCity, legs, payment: { status: 'pending', amount: 499, currency: 'EUR' } };
+    // Persist the trip and update the URL so it's shareable / refresh-safe.
+    const uuid = await saveJourney(state.tripData);
+    if (uuid) {
+      state.tripData.uuid = uuid;
+      try { history.pushState({}, '', '/journey/' + uuid); } catch {}
+      console.debug('[journey] saved', uuid);
+    }
+    showItinerary(profile, itinerary);
+    applyPaywallGating();
+    enrichPlaces(profile, itinerary);
+  } catch (err) {
+    clearInterval(stepInterval);
+    document.getElementById('loading-view').style.display = 'none';
+    document.getElementById('onboarding-view').style.display = 'flex';
+    document.getElementById('onboarding-progress').style.display = 'flex';
+    document.getElementById('lang-switcher').style.display = '';
+    goTo(2); alert(t('alert_error') + err.message);
+  }
+}
+async function callClaude(profile, customPrompt, candidatesMenu, legs) {
+  const src = (legs && legs.length)
+    ? legs.map(l => ({ city: l.subArea, parentCity: l.parentCity, days: l.days, arrivalTimeOfDay: l.arrivalTimeOfDay, legStartDate: l.legStartDate, legEndDate: l.legEndDate, isFirstLegOfCity: l.isFirstLegOfCity, isLastLegOfCity: l.isLastLegOfCity }))
+    : profile.cities.map((c,i) => ({ city: c, parentCity: c, days: profile.days[i], arrivalTimeOfDay: profile.arrivalTimeOfDay?.[i] || '', legStartDate: profile.cityStartDates?.[i] || '', legEndDate: profile.cityEndDates?.[i] || '', isFirstLegOfCity: true, isLastLegOfCity: true }));
+  const todLabel = (tod) => ({ morning: '☀️ Morning', midday: '🌤️ Midday', evening: '🌙 Evening' })[tod] || tod || 'unspecified';
+  const cityList = src.map((d, i) => {
+    const parent = d.parentCity && d.parentCity !== d.city ? ` (sub-area of ${d.parentCity})` : '';
+    const dates = (d.legStartDate && d.legEndDate) ? `, ${d.legStartDate} → ${d.legEndDate}` : '';
+    const tod = d.arrivalTimeOfDay ? `, arrives ${todLabel(d.arrivalTimeOfDay)}` : '';
+    const prevLeg = i > 0 ? src[i-1] : null;
+    const transfer = (prevLeg && !d.arrivalTimeOfDay) ? `, ground transfer from ${prevLeg.city}` : '';
+    return `${d.city}${parent} (${d.days} days${dates}${tod}${transfer})`;
+  }).join(', ');
+  const langInstruction = currentLang !== 'en' ? ` Respond entirely in ${langNames[currentLang]} language.` : '';
+  const menuBlock = candidatesMenu ? `\n${candidatesMenu}\n` : '';
+  const prompt = (customPrompt || `You are an expert local tour guide. Build a detailed hour-by-hour day-by-day itinerary of dining, sights, and experiences. There are NO hotels, NO airport transfers, and NO accommodation in this product — focus exclusively on the activity flow of each day.${menuBlock}
+TRIP LEGS: ${cityList}
+TRIP DATES: ${profile.startDate || 'unspecified'} → ${profile.endDate || 'unspecified'}
+GROUP: ${profile.adults} adults, ${profile.kids} children
+VIBE: ${profile.tripTypes.join(', ')||'general'} | PACE: ${profile.pace} | BUDGET: ${profile.budget} (applies to dining and paid activities only)
+DIET: ${profile.diet.join(', ')||'none'} | INTERESTS: ${profile.interests.join(', ')||'general'}
+ACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | INDOOR BACKUP: ${profile.indoorAlt}
+
+STRUCTURE — HARD RULE: Each trip leg corresponds to ONE sub-area home base. Your returned JSON's "cities" array MUST contain one entry per leg, in the same order, with city.name = the EXACT sub-area name (e.g. "Ubud", "Seminyak" — NOT the parent region like "Bali"). Set city.country to the real country. Each city's days MUST use ONLY that sub-area's menu block under AVAILABLE VENUES — never pull a venue from a different sub-area's menu. The menu IS the geographic bound.
+
+DATES — HARD RULE: Each leg in TRIP LEGS above includes a day count (e.g. "4 days") AND a date range (e.g. "May 10 → May 13"). The cities[].days[] array MUST contain exactly that day count, no more, no less. Each day's "date" field MUST be the human-formatted date derived from that leg's start date plus dayNumber-1 days (e.g. leg May 10–13: day 1 = "Sat May 10", day 2 = "Sun May 11", day 3 = "Mon May 12", day 4 = "Tue May 13"). Do not invent or skip dates.
+
+DAY 1 OF EACH LEG — derive opening from arrivalTimeOfDay:
+- ☀️ Morning  → first event around 10:00 AM. Full day flow: breakfast/cafe → morning sight → lunch → afternoon sight → dinner → optional bar.
+- 🌤️ Midday   → first event around 1:00 PM. Lunch onward: lunch → afternoon sight → dinner → optional bar. NO breakfast on day 1.
+- 🌙 Evening  → first event around 7:00 PM. Dinner-only flow: dinner → optional bar. Traveler is tired; NO daytime activities, NO breakfast or lunch on day 1.
+- unspecified → treat as Midday.
+
+INTER-LEG TRANSITIONS: when a leg follows another leg in the same trip (its arrivalTimeOfDay is empty), open day 1 with an isTravel:true ground-transfer card (car/shuttle, realistic duration like Ubud→Seminyak ~90min, Marais→Saint-Germain ~25min by metro), then continue with the activity flow.
+
+DAY 2+ OF EACH LEG: always start with breakfast/cafe around 8:30–10:00, then morning sight, lunch, afternoon sight, dinner, optional bar.
+
+LAST DAY: no special departure rule; the user handles their own departure timing in this MVP. Do NOT insert a "head to airport", "check out of hotel", or any departure-related event.
+
+EVENT TYPES — strict whitelist: sight, meal, travel. NO hotel type. NO check-in events. NO airport transfer events. The product has no hotels.
+
+Return ONLY valid JSON (no markdown, no backticks):
+{"tripTitle":"evocative title","cities":[{"name":"Sub-area","country":"Country","dotColor":"#2D6A4F","days":[{"dayNumber":1,"date":"Mon Jun 10","title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"10:00 AM","type":"meal","tag":"Breakfast","name":"Cafe Name","desc":"One sentence description","details":["📍 Full address","💶 ~€8/person"],"isTravel":false},{"time":"11:30 AM","type":"sight","tag":"Sightseeing","name":"Place","desc":"One sentence description","details":["📍 Full address","⏱ ~2 hrs","🎟 €15"],"isTravel":false},{"time":"1:30 PM","type":"travel","travelMode":"🚇","travelDesc":"Metro Line 1 → ... (~€2)","travelDuration":"15 min","isTravel":true},{"time":"2:00 PM","type":"meal","tag":"Lunch","name":"Restaurant","desc":"One sentence description","details":["📍 Full address","💶 ~€20/person","📅 Reserve 2 days ahead"],"isTravel":false},{"time":"7:30 PM","type":"meal","tag":"Dinner","name":"Restaurant","desc":"One sentence description","details":["📍 Full address","💶 ~€35/person"],"isTravel":false},{"time":"10:00 PM","type":"sight","tag":"Bar","name":"Bar Name","desc":"One sentence description","details":["📍 Full address","💶 ~€12/cocktail"],"isTravel":false}],"tips":["tip1","tip2","tip3"]}]}]}
+
+Details rules per event type:
+- Restaurants/Cafes/Bars (type=meal or sight tag=Bar) → ["📍 address","⏱ ~X hrs","💶 ~price/person","📅 reservation note"] (drop any field that doesn't apply).
+- Sights/Museums (type=sight) → ["📍 address","⏱ ~X hrs","🎟 ticket info","📅 booking note"].
+- Travel cards (isTravel:true) → travelDesc with full route + cost, e.g. "Metro Line 8 → Opéra, change Line 2 → Anvers (~€2)".
+
+SUB-AREA MENU LOCK — HARD RULE: Each city in the returned JSON is bound to ONE sub-area's menu block. All events for that city must come from that menu only. Never reference a venue from a different sub-area's menu. If the assigned sub-area's menu lacks a needed category (e.g. no cafe), pick a restaurant from the same sub-area for that meal slot.
+
+VENUE NAMING — HARD RULE: Every meal/sight/bar/museum/gym/park event's "name" field MUST exactly match a name in THAT sub-area's menu (verbatim, same spelling and punctuation). Do NOT invent or substitute venues.
+
+VARIETY — HARD RULE: Across the multi-day stay in one sub-area, vary venues. Do NOT reuse the same restaurant or cafe across days. For a 3-day stay in Ubud with 3 lunches, pick three DIFFERENT restaurants (ideally different cuisines and price points). For breakfasts, vary cafes too. The same applies to sights and bars — variety keeps the experience fresh. The candidate menu is shuffled each call, so trust the order shown and lean into less-obvious picks.
+
+DINING:
+- Day 1 with ☀️ Morning arrival → include breakfast, lunch, AND dinner.
+- Day 1 with 🌤️ Midday arrival → lunch + dinner only.
+- Day 1 with 🌙 Evening arrival → dinner only.
+- Day 2+ → breakfast, lunch, AND dinner every day. Never skip dinner.
+
+NIGHTLIFE: if 'night', 'party', 'club', or 'bar' appears in vibe or interests, include a bar after dinner (~21:30–22:00) on most days. Type = sight, tag = Bar.
+
+ACTIVE: if 'active', 'sport', or 'fitness' appears in interests, include a gym/yoga/sports venue as a standalone morning event around 7:00–8:30 on at least one day per leg.
+
+Max 6 events per day. Distinct dotColor per city. Travel cards (isTravel:true) between activities only when actually moving more than ~10 minutes.${profile.notes ? `\nAdditional notes from the traveller: ${profile.notes}` : ''}`) + langInstruction;
+  const response = await fetch('/api/itinerary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, temperature: 1.0 }) });
+  if (!response.ok) throw new Error(`Server error: ${response.status}`);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let fullText = '';
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const raw = line.slice(6).trim();
+      if (raw === '[DONE]') continue;
+      try {
+        const evt = JSON.parse(raw);
+        if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') fullText += evt.delta.text;
+      } catch {}
+    }
+  }
+  // 1. Try raw parse first
+  try { return JSON.parse(fullText.trim()); } catch {}
+  // 2. Strip markdown fences
+  const stripped = fullText.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+  try { return JSON.parse(stripped); } catch {}
+  // 3. Extract first {...} block
+  const m = stripped.match(/\{[\s\S]*\}/);
+  if (m) return JSON.parse(m[0]);
+  throw new Error('Could not parse itinerary JSON from response');
+}
+function renderEvents(events, idPrefix, cityName, country) {
+  return events.map((ev,i) => {
+    const isLast = i === events.length-1;
+    const connector = isLast ? '' : '<div class="t-connector"></div>';
+    if (ev.isTravel) return `<div class="t-event"><div class="t-time-col"><div class="t-dot travel"></div>${connector}</div><div class="t-body"><div class="t-card travel-card"><div class="travel-row"><span class="t-time">${to12h(ev.time)}</span><span style="font-size:15px">${ev.travelMode}</span><span style="font-size:13px;color:var(--text-secondary)">${ev.travelDesc}</span><span class="travel-dur">${ev.travelDuration}</span></div></div></div></div>`;
+    const dotClass = {meal:'meal',sight:'sight',hotel:'hotel',end:'end'}[ev.type]||'sight';
+    const tagClass = {meal:'tag-meal',sight:'tag-sight',hotel:'tag-hotel',end:'tag-end',travel:'tag-travel'}[ev.type]||'tag-sight';
+    const dataId = idPrefix ? ` data-event-id="${idPrefix}-evt${i}"` : '';
+    const mapsQ = encodeURIComponent(`${ev.name} ${cityName||''} ${country||''}`.trim());
+    const mapsLink = `<a class="maps-link" href="https://www.google.com/maps/search/${mapsQ}" target="_blank" rel="noopener">📍 Find on Maps</a>`;
+    return `<div class="t-event"><div class="t-time-col"><div class="t-dot ${dotClass}"></div>${connector}</div><div class="t-body"><div class="t-card"${dataId}><div class="t-top"><span class="t-time">${to12h(ev.time)}</span><span class="t-tag ${tagClass}">${u(ev.tag)}</span></div><div class="t-name">${ev.name}</div>${ev.desc?`<div class="t-desc">${ev.desc}</div>`:''}<div class="t-details">${(ev.details||[]).map(d=>`<span class="t-pill">${d}</span>`).join('')}</div>${mapsLink}</div></div></div>`;
+  }).join('');
+}
+function showItinerary(profile, itinerary) {
+  document.getElementById('loading-view').style.display = 'none';
+  document.getElementById('itinerary-header-extras').style.display = 'flex';
+  document.getElementById('results-action-bar').style.display = 'flex';
+  document.getElementById('lang-switcher').style.display = 'none';
+  document.getElementById('header-route').innerHTML = itinerary.cities.map((c,i) => `${i>0?'<span class="route-sep">→</span>':''}<span class="route-city">${c.name}</span>`).join('');
+  const pillsEl = document.getElementById('header-plan-pills');
+  if (pillsEl) {
+    const entries = Object.entries(state.plan?.byCity || {}).filter(([_, d]) => d?.picked?.title);
+    const swappable = entries.some(([_, d]) => (d.options || []).length > 1);
+    pillsEl.innerHTML = entries.map(([cityName, d]) => {
+      const tagline = (d.picked.tagline || '').replace(/"/g, '&quot;');
+      const parent = entries.length > 1 ? `<span class="plan-parent">${cityName}:</span>` : '';
+      const cls = swappable ? 'plan-pill swappable' : 'plan-pill';
+      const onclick = swappable ? ' onclick="openPlanSwap()"' : '';
+      const swapAttr = ` data-swappable="${swappable}" data-tagline="${tagline}"`;
+      const prefix = swappable ? `<span class="plan-pill-prefix">${t('plan_label_prefix')}</span> ` : '';
+      const chevron = swappable ? ` <span class="plan-pill-chevron">▾</span>` : '';
+      return `<div class="${cls}" title="${tagline}"${swapAttr}${onclick}>${prefix}🎯 ${parent}${d.picked.title}${chevron}</div>`;
+    }).join('');
+    // Show / hide the bottom-bar Switch plan CTA in lockstep with swappability.
+    const switchBtn = document.getElementById('switch-plan-btn');
+    if (switchBtn) switchBtn.style.display = swappable ? '' : 'none';
+  }
+  let sbHtml = `<span class="sb-label">${u(t('sb_itinerary'))}</span>`;
+  let dayCounter = 0;
+  itinerary.cities.forEach(city => {
+    sbHtml += `<div><div class="sb-city-header"><div class="sb-city-dot" style="background:${city.dotColor}"></div><div class="sb-city-name">${city.name}</div><div class="sb-city-nights">${(city.days || []).length}d</div></div>`;
+    city.days.forEach(day => { dayCounter++; sbHtml += `<a class="sb-day ${dayCounter===1?'active':''}" href="#day-${dayCounter}" onclick="setSbActive(this)"><span class="dn">D${day.dayNumber}</span>${day.title}<span class="dd">${day.date.split(' ').slice(0,2).join(' ')}</span></a>`; });
+    sbHtml += `</div>`;
+  });
+  const sbAdults = `${profile.adults} ${profile.adults>1?t('adults_p'):t('adult_s')}${profile.kids>0?` + ${profile.kids} ${profile.kids>1?t('kids_p'):t('kid_s')}`:'' }`;
+  sbHtml += `<div class="sb-divider"></div><span class="sb-label">${u(t('sb_summary'))}</span><div class="sb-stats"><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_travellers'))}</span><span class="sb-stat-v">${sbAdults}</span></div><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_days'))}</span><span class="sb-stat-v">${(profile.days || []).reduce((a,b)=>a+b,0)}</span></div><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_budget'))}</span><span class="sb-stat-v">${profile.budget}</span></div><div class="sb-stat"><span class="sb-stat-l">${u(t('sb_pace'))}</span><span class="sb-stat-v">${profile.pace}</span></div></div>`;
+  document.getElementById('itSidebar').innerHTML = sbHtml;
+  let mainHtml = ''; let dc = 0;
+  itinerary.cities.forEach((city,ci) => {
+    if (ci > 0) { mainHtml += `<div class="city-divider"><div class="city-divider-line"></div><div class="city-divider-label">→ ${city.name}</div><div class="city-divider-line"></div></div>`; }
+    city.days.forEach(day => {
+      dc++; const d = dc;
+      mainHtml += `<div class="day-section" id="day-${d}"><div class="day-header"><div><div class="day-eyebrow">${u(`${t('day_label')} ${day.dayNumber} · ${city.name} · ${day.date}`)}</div><div class="day-title">${day.title}</div><div class="day-subtitle">${day.subtitle}</div></div><div class="weather-badge"><div class="weather-icon">${day.weather.icon}</div><div><div class="weather-temp">${day.weather.temp}</div><div class="weather-desc">${day.weather.desc}</div></div></div></div><div class="day-strip"><div class="strip-item"><div class="strip-val">${day.stats.activities}</div><div class="strip-lbl">${u(t('strip_activities'))}</div></div><div class="strip-item"><div class="strip-val">${day.stats.meals}</div><div class="strip-lbl">${u(t('strip_meals'))}</div></div><div class="strip-item"><div class="strip-val">${day.stats.walking}</div><div class="strip-lbl">${u(t('strip_walking'))}</div></div><div class="strip-item"><div class="strip-val">${day.stats.spend}</div><div class="strip-lbl">${u(t('strip_spend'))}</div></div></div><div class="timeline">${renderEvents(day.events, `day${d}`, city.name, city.country)}</div>${day.tips?.length?`<div class="tips-box"><div class="tips-title">${u(t('local_tips'))}</div><ul class="tips-list">${day.tips.map(tip=>`<li>${tip}</li>`).join('')}</ul></div>`:''}<div class="regen-row"><button class="regen-btn" onclick="regenDay(${d},'${city.name}',${day.dayNumber})">${t('regen_day')}</button></div></div>`;
+    });
+  });
+  document.getElementById('itMain').innerHTML = mainHtml;
+  document.getElementById('itinerary-view').style.display = 'block';
+  const obs = new IntersectionObserver(entries => { entries.forEach(e => { if (e.isIntersecting) { const id = e.target.id; document.querySelectorAll('.sb-day').forEach(l => l.classList.toggle('active', l.getAttribute('href') === `#${id}`)); }}); }, { rootMargin: '-15% 0px -70% 0px' });
+  document.querySelectorAll('.day-section').forEach(s => obs.observe(s));
+}
+async function regenDay(dayNum, cityName, cityDayNum) {
+  const btn = document.querySelector(`#day-${dayNum} .regen-btn`);
+  btn.disabled = true; btn.textContent = t('regenerating');
+  const profile = state.tripData.profile;
+  const itinCities = state.tripData.itinerary?.cities || [];
+  const cityCtx = itinCities.find(c => c.name === cityName);
+  const cityDays = cityCtx?.days || [];
+  const isFirstDayOfLeg = cityDayNum === 1;
+  // Resolve this leg from the stored legs to find arrivalTimeOfDay (only meaningful on day 1).
+  const legs = state.tripData.legs || [];
+  const leg = legs.find(l => l.subArea === cityName) || {};
+  const arrivalTod = leg.arrivalTimeOfDay || '';
+  const todLabel = ({ morning: '☀️ Morning', midday: '🌤️ Midday', evening: '🌙 Evening' })[arrivalTod] || '';
+
+  // Day-1 arrival context (only for day 1 of this leg).
+  let arrivalContext = '';
+  if (isFirstDayOfLeg && todLabel) {
+    if (arrivalTod === 'evening') {
+      arrivalContext = ` ARRIVAL DAY — HARD RULE: This is the first day of the leg. Traveler arrives in the EVENING. Include dinner only (~19:00–20:00) and an optional bar after; NO breakfast, NO lunch, NO daytime activities, NO transfer cards.`;
+    } else if (arrivalTod === 'midday') {
+      arrivalContext = ` ARRIVAL DAY — HARD RULE: This is the first day of the leg. Traveler arrives at MIDDAY. Start with lunch (~13:00), then one afternoon sight, dinner (~19:30), optional bar; NO breakfast.`;
+    } else {
+      arrivalContext = ` ARRIVAL DAY — HARD RULE: This is the first day of the leg. Traveler arrives in the MORNING. Full day flow: breakfast/cafe (~10:00) → morning sight → lunch → afternoon sight → dinner → optional bar.`;
+    }
+  }
+
+  // Continuity hint — avoid duplicating themes from adjacent days.
+  const prevDay = cityDayNum > 1 ? cityDays[cityDayNum - 2] : null;
+  const nextDay = cityDayNum < cityDays.length ? cityDays[cityDayNum] : null;
+  const adj = [];
+  if (prevDay?.title) adj.push(`previous day was "${prevDay.title}"`);
+  if (nextDay?.title) adj.push(`next day is "${nextDay.title}"`);
+  const continuityContext = adj.length ? ` CONTINUITY: ${adj.join(' and ')} — pick a distinct angle for this day.` : '';
+
+  // Collect every venue name already used in the current itinerary EXCEPT the day being
+  // regenerated, so Claude is forced to pick fresh venues.
+  const excludeVenues = [];
+  itinCities.forEach(c => {
+    c.days?.forEach(d => {
+      if (c.name === cityName && d.dayNumber === cityDayNum) return; // skip the day being replaced
+      d.events?.forEach(ev => { if (!ev.isTravel && ev.name) excludeVenues.push(ev.name); });
+    });
+  });
+  const excludeBlock = excludeVenues.length
+    ? `\n\nDO-NOT-USE LIST (these venues already appear on other days of this trip; pick DIFFERENT ones):\n${[...new Set(excludeVenues)].map(n => `  - ${n}`).join('\n')}\n`
+    : '';
+
+  // Conditional interest blocks
+  const nightlifeStr = (profile.interests.some(i => /night/i.test(i)) || profile.tripTypes.some(v => /night|party/i.test(v))) ? ` Include a bar after dinner (type=sight, tag=Bar) around 21:30–22:00 unless this is an evening-arrival day.` : '';
+  const activeStr = profile.interests.some(i => /active|sport/i.test(i)) ? ` Include a gym/yoga venue as a standalone morning event around 7:00–8:30 if it fits.` : '';
+
+  // Sub-area-scoped menu (shuffled by formatCityMenu).
+  const cityMenuBody = formatCityMenu(cityName, state.candidates?.[cityName]);
+  const cityMenuBlock = cityMenuBody ? `\n\nAVAILABLE VENUES for ${cityName} — pick ONLY names from this list (verbatim spelling). NEVER invent or substitute. For every meal/sight/bar/museum/gym/park event, "name" MUST match a name below.\n\n${cityMenuBody}\n` : '';
+
+  const prompt = `You are an expert local tour guide. Regenerate a completely different Day ${cityDayNum} in ${cityName}.${arrivalContext}${continuityContext}${cityMenuBlock}${excludeBlock}
+PROFILE: ${profile.adults} adults, ${profile.kids} kids | BUDGET: ${profile.budget} | VIBE: ${profile.tripTypes.join(', ')||'general'} | PACE: ${profile.pace} | DIET: ${profile.diet.join(', ')||'none'} | INTERESTS: ${profile.interests.join(', ')||'general'} | ACCESSIBILITY: ${profile.accessibility} | LOCAL ONLY: ${profile.localOnly} | INDOOR BACKUP: ${profile.indoorAlt}
+
+EVENT TYPES — strict whitelist: sight, meal, travel. NO hotel, NO airport transfers, NO check-in events. The product has no hotels.
+
+Return ONLY valid JSON (no markdown) matching this exact structure:
+{"title":"Day title","subtitle":"One-line subtitle","weather":{"icon":"☀️","temp":"24°C","desc":"Sunny"},"stats":{"activities":3,"meals":3,"walking":"4 km","spend":"€90"},"events":[{"time":"10:00 AM","type":"meal","tag":"Breakfast","name":"Cafe Name","desc":"One sentence","details":["📍 Address","💶 ~€8/person"],"isTravel":false},{"time":"11:30 AM","type":"sight","tag":"Sightseeing","name":"Place","desc":"One sentence","details":["📍 Address","⏱ ~2 hrs","🎟 €15"],"isTravel":false},{"time":"1:30 PM","type":"meal","tag":"Lunch","name":"Restaurant","desc":"One sentence","details":["📍 Address","💶 ~€20/person"],"isTravel":false},{"time":"7:30 PM","type":"meal","tag":"Dinner","name":"Restaurant","desc":"One sentence","details":["📍 Address","💶 ~€35/person"],"isTravel":false},{"time":"10:00 PM","type":"sight","tag":"Bar","name":"Bar Name","desc":"One sentence","details":["📍 Address","💶 ~€12/cocktail"],"isTravel":false}],"tips":["tip1","tip2","tip3"]}
+
+Details rules: Restaurants/Cafes/Bars→["📍 address","⏱ ~X hrs","💶 ~price/person","📅 reservation note"]; Sights/Museums→["📍 address","⏱ ~X hrs","🎟 ticket info","📅 booking note"]; Travel cards→travelDesc with route + cost.
+
+VARIETY — HARD RULE: Pick venues NOT in the DO-NOT-USE LIST above. Lean into less-obvious picks from the menu (it has been shuffled). Even within this single day, vary cuisine and price points across meals.
+
+SUB-AREA MENU LOCK — HARD RULE: All events come from the menu for ${cityName} only. Never reference a venue outside this menu.
+
+DINING: Day 1 evening-arrival → dinner only. Day 1 midday-arrival → lunch + dinner. Day 1 morning-arrival OR Day 2+ → breakfast + lunch + dinner.${nightlifeStr}${activeStr}${profile.notes ? `\nAdditional notes from the traveller: ${profile.notes}` : ''}`;
+  try {
+    const newDay = await callClaude(profile, prompt);
+    const section = document.getElementById(`day-${dayNum}`);
+    if (newDay.title) section.querySelector('.day-title').textContent = newDay.title;
+    if (newDay.subtitle) section.querySelector('.day-subtitle').textContent = newDay.subtitle;
+    if (newDay.weather) {
+      section.querySelector('.weather-icon').textContent = newDay.weather.icon || '';
+      section.querySelector('.weather-temp').textContent = newDay.weather.temp || '';
+      section.querySelector('.weather-desc').textContent = newDay.weather.desc || '';
+    }
+    const cityObj = state.tripData.itinerary.cities.find(c => c.name === cityName);
+    const events = newDay.events || [];
+    section.querySelector('.timeline').innerHTML = renderEvents(events, `day${dayNum}`, cityName, cityObj?.country || '');
+    const tb = section.querySelector('.tips-box');
+    if (tb && newDay.tips?.length) tb.querySelector('.tips-list').innerHTML = newDay.tips.map(t=>`<li>${t}</li>`).join('');
+    // Sync state so subsequent regens see the new events, then re-apply candidate enrichment
+    const dayObjUpd = cityObj?.days?.find(d => d.dayNumber === cityDayNum) || cityObj?.days?.[cityDayNum-1];
+    if (dayObjUpd) {
+      if (newDay.title) dayObjUpd.title = newDay.title;
+      if (newDay.subtitle) dayObjUpd.subtitle = newDay.subtitle;
+      if (newDay.weather) dayObjUpd.weather = newDay.weather;
+      if (newDay.stats) dayObjUpd.stats = newDay.stats;
+      dayObjUpd.events = events;
+      if (newDay.tips) dayObjUpd.tips = newDay.tips;
+    }
+    if (state.candidates) enrichFromCandidates(state.tripData.itinerary, state.candidates);
+    persistJourneyUpdate();
+    btn.disabled = false; btn.textContent = t('regenerated');
+    setTimeout(() => { btn.textContent = t('regen_day'); }, 2000);
+  } catch(e) { btn.disabled = false; btn.textContent = t('regen_day'); alert(t('alert_regen_error')); }
+}
+function setSbActive(el) { document.querySelectorAll('.sb-day').forEach(l => l.classList.remove('active')); el.classList.add('active'); }
+function openPlanSwap() {
+  const container = document.getElementById('plan-swap-options');
+  const byCity = state.plan?.byCity || {};
+  const entries = Object.entries(byCity).filter(([_, d]) => d?.options?.length);
+  if (!entries.length) {
+    container.innerHTML = `<p style="color:var(--text-secondary);font-size:14px;">${t('modal_no_alternatives')}</p>`;
+  } else {
+    let html = '';
+    const showCityHeaders = entries.length > 1;
+    for (const [cityName, data] of entries) {
+      if (showCityHeaders) html += `<div class="modal-city-header">${cityName}</div>`;
+      for (const opt of data.options) {
+        const isCurrent = opt.id === data.picked?.id;
+        const themes = (opt.themes || []).map(th => `<span class="plan-option-theme-tag">${th}</span>`).join('');
+        const planLine = (opt.plan || []).map(p => `${p.subArea} (${p.days} ${p.days === 1 ? t('day_singular') : t('day_plural')})`).join(' → ');
+        const tagline = (opt.tagline || '').replace(/'/g, '&#39;');
+        const currentLabel = isCurrent ? ` <span style="opacity:.7;font-weight:500;">${t('modal_current_label')}</span>` : '';
+        html += `<div class="plan-option-card${isCurrent ? ' current' : ''}" onclick="swapPlanOption('${cityName.replace(/'/g, "\\'")}','${opt.id}')">
+          <div class="plan-option-title">🎯 ${opt.title}${currentLabel}</div>
+          <div class="plan-option-tagline">${tagline}</div>
+          <div class="plan-option-themes">${themes}</div>
+          <div class="plan-option-plan">${planLine}</div>
+        </div>`;
+      }
+    }
+    container.innerHTML = html;
+  }
+  document.getElementById('plan-swap-modal').style.display = 'flex';
+}
+function closePlanSwap() {
+  document.getElementById('plan-swap-modal').style.display = 'none';
+}
+async function swapPlanOption(cityName, optionId) {
+  const data = state.plan?.byCity?.[cityName];
+  if (!data) { closePlanSwap(); return; }
+  const newOption = (data.options || []).find(o => o.id === optionId);
+  if (!newOption) { closePlanSwap(); return; }
+  if (newOption.id === data.picked?.id) { closePlanSwap(); return; }
+  if (!confirm(t('modal_swap_confirm'))) return;
+  closePlanSwap();
+  data.picked = newOption;
+  console.debug('[plan] swapped', cityName, '→', newOption.title);
+  // Re-run the pipeline from legs onward.
+  const profile = state.tripData.profile;
+  document.getElementById('itinerary-view').style.display = 'none';
+  document.getElementById('itinerary-header-extras').style.display = 'none';
+  document.getElementById('results-action-bar').style.display = 'none';
+  document.getElementById('loading-view').style.display = 'flex';
+  let si = 0;
+  const stepInterval = setInterval(() => {
+    if (si > 0) { const prev = document.getElementById(`ls-${si-1}`); if(prev) prev.classList.replace('active','done'); }
+    const cur = document.getElementById(`ls-${si}`); if (cur) cur.classList.add('active');
+    si++; if (si >= 5) clearInterval(stepInterval);
+  }, 900);
+  try {
+    const legs = buildLegs(profile, state.plan.byCity);
+    let candidates = null;
+    try { candidates = await fetchCandidatesForLegs(profile, legs); } catch (e) { console.warn('[swap] candidates fetch failed', e); }
+    state.candidates = candidates || null;
+    const menu = formatCandidatesMenu(candidates);
+    const itinerary = await callClaude(profile, null, menu, legs);
+    clearInterval(stepInterval);
+    for (let i = 0; i < 5; i++) { const el = document.getElementById(`ls-${i}`); el?.classList.remove('active'); el?.classList.add('done'); }
+    await new Promise(r => setTimeout(r, 400));
+    state.tripData = { ...state.tripData, itinerary, candidates, legs };
+    showItinerary(profile, itinerary);
+    applyPaywallGating();
+    enrichPlaces(profile, itinerary);
+    persistJourneyUpdate();
+  } catch (err) {
+    clearInterval(stepInterval);
+    document.getElementById('loading-view').style.display = 'none';
+    showItinerary(profile, state.tripData.itinerary);
+    applyPaywallGating();
+    alert(t('alert_error') + err.message);
+  }
+}
+(function initLang() {
+  const saved = localStorage.getItem('jounee_lang');
+  if (saved && translations[saved]) {
+    currentLang = saved;
+    const switcher = document.getElementById('lang-switcher');
+    if (switcher) switcher.value = saved;
+    applyTranslations();
+    document.getElementById('step-label').textContent = t('step_of').replace('{n}', state.currentStep + 1);
+  }
+})();
+
+// ─── Journey persistence (server-side KV) ─────────────────────────────
+async function saveJourney(tripData) {
+  try {
+    const res = await fetch('/api/journey/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        profile: tripData.profile,
+        itinerary: tripData.itinerary,
+        candidates: tripData.candidates,
+        planByCity: state.plan?.byCity || tripData.planByCity || null,
+        legs: tripData.legs
+      })
+    });
+    if (!res.ok) { console.warn('[journey] save HTTP', res.status); return null; }
+    const data = await res.json();
+    return data.uuid || null;
+  } catch (e) { console.warn('[journey] save error', e); return null; }
+}
+
+async function loadJourney(uuid) {
+  try {
+    const res = await fetch('/api/journey/' + encodeURIComponent(uuid));
+    if (res.status === 404) return { notFound: true };
+    if (!res.ok) { console.warn('[journey] load HTTP', res.status); return null; }
+    return await res.json();
+  } catch (e) { console.warn('[journey] load error', e); return null; }
+}
+
+function showJourney404() {
+  document.getElementById('onboarding-view').style.display = 'none';
+  document.getElementById('onboarding-progress').style.display = 'none';
+  document.getElementById('loading-view').style.display = 'none';
+  const view = document.getElementById('journey-404-view');
+  if (view) view.style.display = 'flex';
+}
+
+// ─── Paywall gating ───────────────────────────────────────────────────
+// Apply / refresh the paywall lock state on the current itinerary view.
+// Idempotent: safe to call after every render (showItinerary, regenDay,
+// swapPlanOption). When paid, this is a no-op cleanup.
+function applyPaywallGating() {
+  const isPaid = state.tripData?.payment?.status === 'paid';
+
+  // Always: clear prior gating artefacts before re-applying.
+  document.querySelector('.lock-banner')?.remove();
+  document.querySelectorAll('.day-section.locked').forEach(el => el.classList.remove('locked'));
+  document.querySelectorAll('#results-action-bar button[data-paywall-disabled]').forEach(btn => {
+    btn.disabled = false;
+    btn.removeAttribute('data-paywall-disabled');
+    btn.removeAttribute('title');
+  });
+  document.querySelectorAll('.regen-btn[data-paywall-disabled]').forEach(btn => {
+    btn.disabled = false;
+    btn.removeAttribute('data-paywall-disabled');
+    btn.removeAttribute('title');
+  });
+  document.querySelectorAll('.plan-pill').forEach(p => {
+    const wasSwappable = p.dataset.swappable === 'true';
+    // Keep the `swappable` look (padding, chevron, shadow) whenever the trip
+    // has alternatives — even when locked — so the affordance is visible.
+    // Toggle `paywall-locked` for the disabled visual + cursor + tooltip.
+    p.classList.toggle('swappable', wasSwappable);
+    p.classList.toggle('paywall-locked', wasSwappable && !isPaid);
+    if (wasSwappable && isPaid) p.setAttribute('onclick', 'openPlanSwap()');
+    else p.removeAttribute('onclick');
+    p.title = (wasSwappable && !isPaid)
+      ? t('cta_disabled_tooltip')
+      : (p.dataset.tagline || '');
+  });
+
+  if (isPaid) return;
+
+  // Lock every day-section after the first one.
+  const sections = document.querySelectorAll('#itMain .day-section');
+  if (!sections.length) return;
+  let lockedCount = 0;
+  sections.forEach((sec, i) => { if (i > 0) { sec.classList.add('locked'); lockedCount++; } });
+
+  if (lockedCount > 0) {
+    const totalDays = sections.length;
+    const banner = document.createElement('div');
+    banner.className = 'lock-banner';
+    // Three banner shapes: confirming (post-Stripe redirect, awaiting webhook),
+    // confirm_timeout (poll exhausted — webhook still hasn't landed), default
+    // (regular pre-purchase lock with Buy CTA).
+    if (state.paywallOverride === 'confirming') {
+      banner.innerHTML =
+        `<div class="lock-banner-icon">⏳</div>` +
+        `<div class="lock-banner-title">${t('confirming_payment_title')}</div>` +
+        `<div class="lock-banner-subtitle">${t('confirming_payment_subtitle')}</div>`;
+    } else if (state.paywallOverride === 'confirm_timeout') {
+      banner.innerHTML =
+        `<div class="lock-banner-icon">⏳</div>` +
+        `<div class="lock-banner-title">${t('confirming_payment_title')}</div>` +
+        `<div class="lock-banner-subtitle">${t('confirming_timeout_message')}</div>` +
+        `<button class="lock-banner-cta" onclick="location.reload()">${t('confirming_refresh_cta')}</button>`;
+    } else {
+      const subtitle = (t('unlock_banner_subtitle') || '')
+        .replace('{total}', String(totalDays))
+        .replace('{locked}', String(lockedCount));
+      banner.innerHTML =
+        `<div class="lock-banner-icon">🔒</div>` +
+        `<div class="lock-banner-title">${t('unlock_banner_title')}</div>` +
+        `<div class="lock-banner-subtitle">${subtitle}</div>` +
+        `<button class="lock-banner-cta" onclick="buyJourney()">${t('unlock_buy_cta')}</button>`;
+    }
+    sections[1].parentNode.insertBefore(banner, sections[1]);
+  }
+
+  // Disable action bar buttons (Edit trip / Export PDF).
+  document.querySelectorAll('#results-action-bar button').forEach(btn => {
+    btn.disabled = true;
+    btn.dataset.paywallDisabled = 'true';
+    btn.title = t('cta_disabled_tooltip');
+  });
+  // Disable per-day regen buttons.
+  document.querySelectorAll('.regen-btn').forEach(btn => {
+    btn.disabled = true;
+    btn.dataset.paywallDisabled = 'true';
+    btn.title = t('cta_disabled_tooltip');
+  });
+}
+
+async function buyJourney() {
+  if (!state.tripData?.uuid) return;
+  const btn = document.querySelector('.lock-banner-cta');
+  if (btn) { btn.disabled = true; btn.textContent = t('unlock_buying'); }
+  try {
+    const res = await fetch('/api/journey/' + encodeURIComponent(state.tripData.uuid) + '/buy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        locale: currentLang,
+        productName: t('stripe_product_name'),
+        productDescription: t('stripe_product_description')
+      })
+    });
+    if (!res.ok) throw new Error('buy_failed_' + res.status);
+    const data = await res.json();
+    // Already paid (e.g. another tab already purchased) — unlock in place.
+    if (data.status === 'paid') {
+      state.tripData.payment = { ...(state.tripData.payment || {}), status: 'paid', paidAt: data.paidAt };
+      applyPaywallGating();
+      return;
+    }
+    if (data.url) {
+      // Hand off to Stripe Checkout. On success, Stripe redirects back to
+      // /journey/<uuid>?paid=1 and bootFromUrl polls /status until paid.
+      window.location.href = data.url;
+      return;
+    }
+    throw new Error('no_checkout_url');
+  } catch (e) {
+    console.warn('[buy] failed', e);
+    alert(t('alert_payment_failed'));
+    if (btn) { btn.disabled = false; btn.textContent = t('unlock_buy_cta'); }
+  }
+}
+
+// After Stripe redirects back with ?paid=1, poll /status until the webhook
+// lands the paid state (~1-3 seconds typically). Stepped interval: 1s for
+// the first 5 attempts, then 2s — covers slower webhook deliveries (~21s
+// total) without hammering KV. Refetches the full record once paid so the
+// UI re-hydrates with the updated payment block. Sets paywallOverride to
+// 'confirm_timeout' on exhaustion so the user sees a refresh hint instead
+// of the Buy CTA (they did pay).
+async function pollPaymentStatus(uuid, maxAttempts = 13) {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const res = await fetch('/api/journey/' + encodeURIComponent(uuid) + '/status');
+      if (res.ok) {
+        const s = await res.json();
+        if (s.status === 'paid') {
+          const full = await loadJourney(uuid);
+          if (full && !full.notFound) {
+            state.tripData.payment = full.payment;
+            state.paywallOverride = null;
+            applyPaywallGating();
+            console.debug('[paywall] webhook landed, unlocked', uuid);
+            return true;
+          }
+        }
+      }
+    } catch {}
+    await new Promise(r => setTimeout(r, i < 5 ? 1000 : 2000));
+  }
+  console.warn('[paywall] status polling timed out for', uuid);
+  state.paywallOverride = 'confirm_timeout';
+  applyPaywallGating();
+  return false;
+}
+
+// Persist paid trips after mutations (regen-day, plan-swap). No-op for
+// pending trips since their CTAs are disabled and they can't mutate.
+async function persistJourneyUpdate() {
+  if (state.tripData?.payment?.status !== 'paid') return;
+  const uuid = state.tripData.uuid;
+  if (!uuid) return;
+  try {
+    await fetch('/api/journey/' + encodeURIComponent(uuid) + '/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        profile: state.tripData.profile,
+        itinerary: state.tripData.itinerary,
+        candidates: state.tripData.candidates,
+        planByCity: state.plan?.byCity || state.tripData.planByCity || null,
+        legs: state.tripData.legs
+      })
+    });
+    console.debug('[journey] update persisted', uuid);
+  } catch (e) {
+    console.warn('[journey] update failed', e);
+  }
+}
+
+async function bootFromUrl() {
+  const m = location.pathname.match(/^\/journey\/([0-9a-f-]{16,})\/?$/i);
+  if (!m) return false;
+  const uuid = m[1];
+  document.getElementById('onboarding-view').style.display = 'none';
+  document.getElementById('onboarding-progress').style.display = 'none';
+  document.getElementById('loading-view').style.display = 'flex';
+  document.getElementById('lang-switcher').style.display = 'none';
+  const data = await loadJourney(uuid);
+  document.getElementById('loading-view').style.display = 'none';
+  if (!data || data.notFound) { showJourney404(); return true; }
+  state.tripData = {
+    uuid: data.uuid,
+    profile: data.profile,
+    itinerary: data.itinerary,
+    candidates: data.candidates,
+    planByCity: data.planByCity,
+    legs: data.legs,
+    payment: data.payment
+  };
+  state.candidates = data.candidates || null;
+  state.plan = { byCity: data.planByCity || {} };
+  // Stripe-success return path: ?paid=1 means user just came back from Checkout.
+  // Set the 'confirming' override BEFORE the first paywall render so the user
+  // sees "Confirming your payment…" instead of the Buy banner during the poll
+  // window. pollPaymentStatus clears the override on success.
+  const qs = new URLSearchParams(location.search);
+  const awaitingWebhook = qs.get('paid') === '1' && data.payment?.status !== 'paid';
+  if (awaitingWebhook) state.paywallOverride = 'confirming';
+  showItinerary(data.profile, data.itinerary);
+  applyPaywallGating();
+  enrichPlaces(data.profile, data.itinerary);
+  if (awaitingWebhook) {
+    pollPaymentStatus(uuid).finally(() => {
+      // Strip the query string so refresh / share doesn't re-trigger polling.
+      try { history.replaceState({}, '', '/journey/' + uuid); } catch {}
+    });
+  }
+  return true;
+}
+// Run boot after the DOM-tied init has settled.
+window.addEventListener('DOMContentLoaded', () => { bootFromUrl(); });
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+function initAutocomplete(input) {
+  let validValue = input.value || '';
+  const doFetch = debounce(async (q) => {
+    if (q.length < 2) { closeAcDropdown(input); return; }
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&featuretype=city&limit=5&format=json&addressdetails=1`);
+      const data = await res.json();
+      showAcDropdown(input, data, (v, lat, lon) => { validValue = v; const row = input.closest('.city-row'); if (lat) row.dataset.lat = lat; if (lon) row.dataset.lon = lon; populateAirportSelect(row, parseFloat(lat), parseFloat(lon)); });
+    } catch {}
+  }, 300);
+  input.addEventListener('input', () => doFetch(input.value.trim()));
+  input.addEventListener('blur', () => setTimeout(() => { closeAcDropdown(input); if (input.value !== validValue) input.value = validValue; }, 200));
+  input.addEventListener('keydown', e => {
+    const dd = input.parentElement.querySelector('.ac-dropdown'); if (!dd) return;
+    const items = [...dd.querySelectorAll('.ac-item')];
+    const ai = items.findIndex(i => i.classList.contains('ac-active'));
+    if (e.key === 'ArrowDown') { e.preventDefault(); const ni = (ai + 1) % items.length; items.forEach(i => i.classList.remove('ac-active')); items[ni]?.classList.add('ac-active'); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); const ni = (ai <= 0 ? items.length : ai) - 1; items.forEach(i => i.classList.remove('ac-active')); items[ni]?.classList.add('ac-active'); }
+    else if (e.key === 'Enter') { const a = dd.querySelector('.ac-active'); if (a) { e.preventDefault(); input.value = a.textContent; validValue = a.textContent; const row = input.closest('.city-row'); const lat = parseFloat(a.dataset.lat); const lon = parseFloat(a.dataset.lon); if (a.dataset.lat) row.dataset.lat = a.dataset.lat; if (a.dataset.lon) row.dataset.lon = a.dataset.lon; closeAcDropdown(input); populateAirportSelect(row, lat, lon); } }
+    else if (e.key === 'Escape') { closeAcDropdown(input); input.value = validValue; }
+  });
+}
+function showAcDropdown(input, results, onSelect) {
+  closeAcDropdown(input); if (!results.length) return;
+  const dd = document.createElement('div'); dd.className = 'ac-dropdown';
+  const seen = new Set();
+  results.forEach(r => {
+    const city = r.name || r.display_name.split(',')[0].trim();
+    const country = r.address?.country || r.display_name.split(',').pop().trim();
+    const label = `${city}, ${country}`;
+    if (seen.has(label)) return; seen.add(label);
+    const item = document.createElement('div'); item.className = 'ac-item'; item.textContent = label;
+    item.dataset.lat = r.lat; item.dataset.lon = r.lon;
+    item.addEventListener('mousedown', e => { e.preventDefault(); input.value = label; onSelect(label, r.lat, r.lon); closeAcDropdown(input); });
+    dd.appendChild(item);
+  });
+  input.parentElement.appendChild(dd);
+}
+function closeAcDropdown(input) { input.parentElement.querySelector('.ac-dropdown')?.remove(); }
+document.querySelectorAll('.city-input').forEach(initAutocomplete);
+// Date sanity: when a start date is chosen, set the matching end date's
+// min to start+1 day; bump end up if it would now be invalid. Uses event
+// delegation so dynamically added city rows are covered automatically.
+document.getElementById('cityList')?.addEventListener('change', (e) => {
+  const target = e.target;
+  if (!target?.classList) return;
+  const row = target.closest('.city-row');
+  if (!row) return;
+  if (target.classList.contains('city-start-date') && target.value) {
+    const endEl = row.querySelector('.city-end-date');
+    if (!endEl) return;
+    const min = addDaysISO(target.value, 1);
+    endEl.min = min;
+    if (endEl.value && endEl.value <= target.value) endEl.value = min;
+  }
+  if (target.classList.contains('city-end-date') && target.value) {
+    const startEl = row.querySelector('.city-start-date');
+    if (startEl?.value && target.value <= startEl.value) {
+      target.value = addDaysISO(startEl.value, 1);
+    }
+  }
+});
+let _airportData = null;
+let _airportDataPromise = null;
+function loadAirportData() {
+  if (_airportData) return Promise.resolve(_airportData);
+  if (_airportDataPromise) return _airportDataPromise;
+  _airportDataPromise = fetch('https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat')
+    .then(r => r.text())
+    .then(text => {
+      const airports = [];
+      // Parse a CSV line handling both quoted and unquoted fields
+      function parseCSVLine(line) {
+        const fields = []; let i = 0;
+        while (i < line.length) {
+          if (line[i] === '"') {
+            let j = i + 1;
+            while (j < line.length && line[j] !== '"') j++;
+            fields.push(line.slice(i + 1, j));
+            i = j + 1; if (line[i] === ',') i++;
+          } else {
+            let j = line.indexOf(',', i); if (j === -1) j = line.length;
+            fields.push(line.slice(i, j)); i = j + 1;
+          }
+        }
+        return fields;
+      }
+      for (const line of text.split('\n')) {
+        if (!line.trim()) continue;
+        const f = parseCSVLine(line);
+        // airports.dat: 0=id, 1=name, 2=city, 3=country, 4=iata, 5=icao, 6=lat, 7=lon
+        if (f.length < 8) continue;
+        const iata = f[4];
+        if (!iata || iata === '\\N' || iata.length !== 3) continue;
+        const lat = parseFloat(f[6]); const lon = parseFloat(f[7]);
+        if (isNaN(lat) || isNaN(lon)) continue;
+        airports.push({ iata, name: f[1], city: f[2], country: f[3], lat, lon });
+      }
+      _airportData = airports;
+      return airports;
+    });
+  return _airportDataPromise;
+}
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+async function populateAirportSelect(row, cityLat, cityLon) {
+  const sels = [...row.querySelectorAll('.airport-select')];
+  if (!sels.length) return;
+  sels.forEach(s => { s.disabled = true; s.innerHTML = '<option value="">Loading…</option>'; });
+  try {
+    const airports = await loadAirportData();
+    const matches = airports
+      .map(a => ({ ...a, dist: haversineKm(cityLat, cityLon, a.lat, a.lon) }))
+      .filter(a => a.dist <= 200)
+      .sort((a, b) => a.dist - b.dist);
+    sels.forEach(s => {
+      s.innerHTML = '<option value="">No airport (opt.)</option>';
+      matches.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.iata; opt.textContent = `${a.iata} — ${a.name}, ${a.country} (${Math.round(a.dist)}km)`; s.appendChild(opt);
+      });
+      if (matches.length === 1) s.value = matches[0].iata;
+      s.disabled = false;
+    });
+  } catch {
+    sels.forEach(s => { s.innerHTML = '<option value="">No airport (opt.)</option>'; s.disabled = false; });
+  }
+}
+function applyEnrichmentToCard(card, data) {
+  if (!card || !data) return;
+  const realName = data.realName || data.name;
+  if (realName) { const nameEl = card.querySelector('.t-name'); if (nameEl) nameEl.textContent = realName; }
+  if (data.address) {
+    card.querySelectorAll('.t-pill').forEach(pill => {
+      if (pill.textContent.startsWith('📍')) pill.textContent = `📍 ${data.address}`;
+    });
+  }
+  if (data.mapsUrl) {
+    const link = card.querySelector('.maps-link');
+    if (link) link.href = data.mapsUrl;
+  }
+  if (data.rating) {
+    if (card.querySelector('.t-places-badge')) return;
+    const badge = document.createElement('div');
+    badge.className = 't-places-badge';
+    const reviews = data.ratingCount ?? data.reviews;
+    badge.textContent = `⭐ ${data.rating}${reviews ? ` (${reviews.toLocaleString()})` : ''}`;
+    card.querySelector('.t-top')?.after(badge);
+  }
+}
+function buildCandidateLookup(cityCandidates) {
+  const map = {};
+  if (!cityCandidates) return map;
+  for (const arr of Object.values(cityCandidates)) {
+    if (!Array.isArray(arr)) continue;
+    for (const c of arr) {
+      if (c?.name) map[normalizeVenueName(c.name)] = c;
+    }
+  }
+  return map;
+}
+function enrichFromCandidates(itinerary, candidates) {
+  const ENRICHABLE = new Set(['meal', 'sight', 'bar', 'nightlife', 'activity', 'hotel']);
+  let dc = 0;
+  itinerary.cities.forEach(city => {
+    const lookup = buildCandidateLookup(candidates?.[city.name]);
+    city.days.forEach(day => {
+      dc++;
+      day.events.forEach((ev, ei) => {
+        if (ev.isTravel || !ENRICHABLE.has(ev.type) || !ev.name) return;
+        const match = lookup[normalizeVenueName(ev.name)];
+        if (!match) return;
+        const card = document.querySelector(`[data-event-id="day${dc}-evt${ei}"]`);
+        applyEnrichmentToCard(card, match);
+      });
+    });
+  });
+}
+async function enrichPlaces(profile, itinerary) {
+  const ENRICHABLE = new Set(['meal', 'sight', 'bar', 'nightlife', 'activity', 'hotel']);
+
+  // Grounded path: if we fetched candidates upfront, enrich from memory (no extra API calls).
+  if (state.candidates && Object.keys(state.candidates).length) {
+    enrichFromCandidates(itinerary, state.candidates);
+    return;
+  }
+
+  // Fallback: resolve coords per city and verify via /api/places.
+  const cityCoords = {};
+  for (let ci = 0; ci < itinerary.cities.length; ci++) {
+    let lat = profile.lats?.[ci] || 0;
+    let lon = profile.lons?.[ci] || 0;
+    if (!lat || !lon) {
+      try {
+        const geo = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(itinerary.cities[ci].name)}&limit=1&format=json`);
+        const gd = await geo.json();
+        if (gd[0]) { lat = parseFloat(gd[0].lat); lon = parseFloat(gd[0].lon); }
+      } catch {}
+    }
+    cityCoords[ci] = { lat, lon };
+  }
+
+  const events = [];
+  let dc = 0;
+  itinerary.cities.forEach((city, ci) => {
+    const { lat, lon } = cityCoords[ci];
+    city.days.forEach(day => {
+      dc++;
+      day.events.forEach((ev, ei) => {
+        if (!ev.isTravel && ENRICHABLE.has(ev.type)) {
+          events.push({ id: `day${dc}-evt${ei}`, title: ev.name, type: ev.type, city: city.name, lat, lon });
+        }
+      });
+    });
+  });
+  if (!events.length) return;
+  try {
+    const res = await fetch('/api/places', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ events }) });
+    if (!res.ok) return;
+    const data = await res.json();
+    (data.results || []).forEach(enriched => {
+      if (enriched.skip) return;
+      const card = document.querySelector(`[data-event-id="${enriched.id}"]`);
+      applyEnrichmentToCard(card, enriched);
+    });
+  } catch {}
+}
+function resetApp() {
+  document.getElementById('itinerary-view').style.display = 'none';
+  document.getElementById('itinerary-header-extras').style.display = 'none';
+  document.getElementById('results-action-bar').style.display = 'none';
+  document.getElementById('lang-switcher').style.display = '';
+  for (let i = 0; i < 5; i++) { const el = document.getElementById(`ls-${i}`); if(el){ el.className='loading-step'; if(i===0)el.classList.add('active'); }}
+  document.getElementById('onboarding-view').style.display = 'flex';
+  document.getElementById('onboarding-progress').style.display = 'flex';
+  goTo(0);
+}
 </script>
 </body>
 </html>

@@ -9,14 +9,14 @@ Jounee is a B2C web app at `jounee.app` that generates personalized multi-day **
 ## Stack
 
 - **Runtime**: Cloudflare Pages with Functions (`functions/api/**`).
-- **Frontend**: two static files in `public/`. `index.html` is the **landing page** (hero + bottom-sheet capture form). `app.html` is the **SPA** (full onboarding flow + itinerary view). The landing form serializes `dest`, `arrival`, `departure`, `interests` as URL params and navigates to `/app.html?…`; `prefillFromQuery()` in app.html reads them on `DOMContentLoaded`, fills the first city row, fuzzy-matches interest chips, and auto-calls `startGeneration()` if the three required fields are present. No bundler. i18n in `public/translations.js` (7 languages: en, tr, es, fr, de, it, pt).
+- **Frontend**: vanilla HTML/JS in `public/index.html` (single SPA file). No bundler. i18n in `public/translations.js` (7 languages: en, tr, es, fr, de, it, pt).
 - **State**: Cloudflare KV namespace `JOURNEYS` (id `89af90c14a6149e0a2bc52fd2516b36f`), bound via `wrangler.toml`.
 - **AI**: Anthropic Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) for both the planner call and the itinerary call.
 - **Places data**: Google Places API (New) `searchNearby`.
 - **Geocoding**: Nominatim (OpenStreetMap) for sub-area resolution.
 - **Payments**: Stripe Checkout (one-time €4.99) + webhook → KV update.
 - **i18n**: simple key-value lookup in `translations.js`; `t(key)` reader, `data-i18n` attribute on DOM.
-- **Routing**: `/` → landing (`index.html`). `/app.html` → SPA. `/journey/<uuid>` shareable URLs are rewritten to `/app.html` via `_redirects`; the SPA inspects `location.pathname` on boot via `bootFromUrl()`.
+- **Routing**: `/journey/<uuid>` shareable URLs via `_redirects` rewrite to `/index.html`; SPA inspects `location.pathname` on boot.
 
 ## End-to-end pipeline
 
@@ -144,7 +144,6 @@ journey:<uuid> = {
 10. **Re-save on paid mutations.** `regenDay` and `swapPlanOption` call `persistJourneyUpdate()` so the KV record stays fresh for shared URLs. No-op when unpaid (CTAs are disabled anyway).
 11. **i18n is comprehensive**. 7 languages. **Never hardcode user-visible English** — always go through `t(key)`. Add the key to all 7 language blocks in `translations.js`. The user has flagged this multiple times. This extends to the Stripe Checkout page: `buyJourney()` forwards `currentLang` plus the localized `stripe_product_name` / `stripe_product_description` to the buy endpoint, which passes them through to Stripe so both the hosted UI **and** the line item copy match the SPA. Never use `locale: 'auto'` — explicit forwarding ensures consistency with the language the user picked in our UI. Translations stay in `translations.js` (single source of truth); the backend has English fallbacks only as a defensive default if the body is malformed.
 12. **Regional vs dense-city sub-area lists** in the planner prompt are illustrative, not exhaustive. Adding new destinations only needs new examples if Claude's geography knowledge of them is shaky.
-13. **Landing page is a separate file from the SPA, glued by URL params.** `/` serves a hero + bottom-sheet capture form (`public/index.html`), `/app.html` serves the full SPA (`public/app.html`). The landing form encodes `dest`, `arrival`, `departure`, `interests` into the query string and navigates; the SPA's `prefillFromQuery()` hydrates step 0, fuzzy-matches the four landing chips against `#interests` + `#tripType` chips by substring, and auto-calls `startGeneration()` if `dest && arrival && departure`. Why split them: SEO/landing copy, A/B testing the hero, and a clean form-funnel boundary without bundling. The landing chips don't 1:1 map app chips (no Beach in app, Food→Food&Wine, Culture→Cultural, Arts→Museums&Art) — that's intentional best-effort, since the SPA still lets users refine. The `_redirects` rewrite for `/journey/<uuid>` now points at `/app.html`, not `/`.
 
 ## Status: live in production (last verified 2026-05-01)
 
@@ -167,6 +166,7 @@ Post-redirect UX: while the webhook propagates the paid state to KV, the SPA sho
 - **Refund-to-relock automation.** Today: refunds in Stripe don't change KV. Most likely user behaviour: someone refunds, journey stays unlocked, they keep using it. Either accept that (free migration friction = low) or wire `charge.refunded` webhook → flip status back to pending. Decision pending.
 - **Spam / abuse defense.** Anyone can generate unlimited free trips (each one burns Anthropic Haiku tokens + Google Places quota + a KV record). No rate limits, no captcha, no auth. At scale this is real money. Cheap mitigation: per-IP rate limit at Cloudflare layer (Workers Rules or rate-limiting binding) before functions ever hit upstream APIs.
 - **Cross-language locale-aware pricing display.** €4.99 is hardcoded in copy and prompt. Consider `Intl.NumberFormat` for the displayed price; keep the actual Stripe charge in EUR (Stripe handles FX on the customer side).
+- **Marketing landing page**. Currently `/` IS the form. No SEO content, no positioning. Ship even a one-page landing for organic discovery.
 - **Analytics / funnel tracking**. Zero visibility on form-start → generation-complete → buy-click → buy-success drop-off rates. Plausible/Posthog/even Cloudflare Web Analytics would unlock real product decisions.
 - **Customer support inbox.** `support@jounee.app` is referenced in Stripe and customer emails but probably doesn't route anywhere yet. Set up forwarding to a real inbox.
 

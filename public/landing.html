@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jounee — AI Travel Planner</title>
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.0.8/700.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/playfair-display@5.0.8/400-italic.css" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #F5F2ED;
+    color: #111827;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    padding: 24px 40px;
+    display: flex;
+    justify-content: center;
+    z-index: 50;
+    background: #F5F2ED;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+
+  .wordmark {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 28px;
+    text-decoration: none;
+    line-height: 1;
+  }
+  .wordmark .jou { font-weight: 700; color: #111827; }
+  .wordmark .nee { font-weight: 400; font-style: italic; color: #2D6147; }
+
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 120px 24px 100px;
+  }
+
+  .icon-mark { margin-bottom: 32px; }
+
+  h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(40px, 6.5vw, 80px);
+    line-height: 1.06;
+    letter-spacing: -0.02em;
+    color: #111827;
+    max-width: 760px;
+    margin-bottom: 18px;
+  }
+
+  .sub {
+    font-size: 18px;
+    color: #6B7280;
+    margin-bottom: 52px;
+    max-width: 460px;
+    line-height: 1.65;
+  }
+
+  .cta {
+    background: #111827;
+    color: #F5F2ED;
+    font-size: 17px;
+    font-weight: 500;
+    padding: 18px 52px;
+    border-radius: 100px;
+    border: none;
+    cursor: pointer;
+    letter-spacing: -0.01em;
+    transition: background 0.2s, transform 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .cta:hover { background: #2D6147; transform: translateY(-2px); }
+  .cta:active { transform: translateY(0); }
+  .cta .arr { transition: transform 0.2s; display: inline-block; }
+  .cta:hover .arr { transform: translateX(5px); }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: transparent;
+    z-index: 100;
+    pointer-events: none;
+    transition: background 0.3s;
+  }
+  .overlay.open {
+    background: rgba(17,24,39,0.45);
+    pointer-events: all;
+  }
+
+  .sheet {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #ffffff;
+    border-radius: 28px 28px 0 0;
+    padding: 16px 28px 48px;
+    max-width: 600px;
+    margin: 0 auto;
+    transform: translateY(110%);
+    transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+    z-index: 101;
+    max-height: 92vh;
+    overflow-y: auto;
+  }
+  .sheet.open { transform: translateY(0); }
+
+  .handle {
+    width: 40px; height: 4px;
+    background: #E5E7EB;
+    border-radius: 2px;
+    margin: 0 auto 24px;
+  }
+
+  .sheet-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 24px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 4px;
+  }
+  .sheet-sub {
+    font-size: 14px;
+    color: #9CA3AF;
+    margin-bottom: 28px;
+    line-height: 1.5;
+  }
+
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #9CA3AF;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 7px;
+  }
+  .field input {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1px solid #E5E7EB;
+    border-radius: 14px;
+    font-size: 15px;
+    color: #111827;
+    background: #F9FAFB;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    font-family: inherit;
+  }
+  .field input:focus {
+    border-color: #2D6147;
+    background: #fff;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .chip {
+    padding: 8px 18px;
+    border-radius: 100px;
+    border: 1px solid #E5E7EB;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    background: #fff;
+    color: #374151;
+    transition: all 0.15s;
+  }
+  .chip.on {
+    background: #2D6147;
+    border-color: #2D6147;
+    color: #fff;
+  }
+
+  .submit {
+    width: 100%;
+    margin-top: 28px;
+    background: #111827;
+    color: #F5F2ED;
+    font-size: 16px;
+    font-weight: 500;
+    padding: 17px;
+    border-radius: 100px;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    letter-spacing: -0.01em;
+    transition: background 0.2s;
+  }
+  .submit:hover { background: #2D6147; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="wordmark"><span class="jou">Jou</span><span class="nee">nee</span></a>
+</nav>
+
+<section class="hero">
+  <div class="icon-mark">
+    <svg viewBox="0 0 40 64" style="height: 48px; width: auto;" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 20 14 L 20 42 Q 20 53 10 53" stroke="#2D6147" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="20" cy="7" r="7" fill="#D85A30"/>
+      <circle cx="10" cy="53" r="7" fill="#2D6147"/>
+    </svg>
+  </div>
+  <h1>Your AI travel planner</h1>
+  <p class="sub">Enter your destination, dates, and what you enjoy. Jounee builds a complete day-by-day itinerary — real hotels, restaurants, and things to do.</p>
+  <button class="cta" onclick="openSheet()">
+    Plan my trip <span class="arr">&#8594;</span>
+  </button>
+</section>
+
+<div class="overlay" id="overlay" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="handle"></div>
+  <p class="sheet-title">Where are you headed?</p>
+  <p class="sheet-sub">Fill in your trip details and your full itinerary will be ready in seconds.</p>
+
+  <div class="field">
+    <label>Destination city</label>
+    <input type="text" placeholder="e.g. Bali, Paris, Istanbul…">
+  </div>
+  <div class="row">
+    <div class="field">
+      <label>Arrival date</label>
+      <input type="date">
+    </div>
+    <div class="field">
+      <label>Departure date</label>
+      <input type="date">
+    </div>
+  </div>
+  <div class="field">
+    <label>What are you into?</label>
+    <div class="chips">
+      <button class="chip" onclick="this.classList.toggle('on')">Food</button>
+      <button class="chip" onclick="this.classList.toggle('on')">Culture</button>
+      <button class="chip" onclick="this.classList.toggle('on')">Nature</button>
+      <button class="chip" onclick="this.classList.toggle('on')">Nightlife</button>
+      <button class="chip" onclick="this.classList.toggle('on')">Shopping</button>
+      <button class="chip" onclick="this.classList.toggle('on')">Beach</button>
+      <button class="chip" onclick="this.classList.toggle('on')">Active</button>
+      <button class="chip" onclick="this.classList.toggle('on')">Arts</button>
+    </div>
+  </div>
+
+  <button class="submit">Generate my itinerary</button>
+</div>
+
+<script>
+  function openSheet() {
+    document.getElementById('overlay').classList.add('open');
+    document.getElementById('sheet').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSheet() {
+    document.getElementById('overlay').classList.remove('open');
+    document.getElementById('sheet').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+</script>
+</body>
+</html>
