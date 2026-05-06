@@ -65,11 +65,33 @@ export async function onRequestPost(context) {
   params2.append('line_items[0][price_data][currency]', 'eur');
   params2.append('line_items[0][price_data][product_data][name]', productName);
   params2.append('line_items[0][price_data][product_data][description]', productDescription);
+  // Stripe Tax: classify the line item as a general digital service so the
+  // hosted tax rules apply (txcd_10000000). `tax_behavior: inclusive` keeps
+  // the customer-facing total at €4.99 across the SPA copy / translations
+  // — the VAT portion is carved out of that amount on the seller side.
+  params2.append('line_items[0][price_data][product_data][tax_code]', 'txcd_10000000');
+  params2.append('line_items[0][price_data][tax_behavior]', 'inclusive');
   params2.append('line_items[0][price_data][unit_amount]', '499'); // €4.99
   params2.append('line_items[0][quantity]', '1');
   params2.append('success_url', successUrl);
   params2.append('cancel_url', cancelUrl);
   params2.append('locale', locale);
+  // Stripe Tax needs a billing country to compute the rate. `auto` lets
+  // Stripe minimise the address fields shown — typically country + postal
+  // code in the EU, ZIP only on US cards, nothing extra for Apple/Google Pay
+  // (the wallet supplies the address). Only NL is registered today, so
+  // non-NL customers will pass through tax-free until OSS is live.
+  params2.append('automatic_tax[enabled]', 'true');
+  params2.append('billing_address_collection', 'auto');
+  // Auto-generate a proper EU-compliant invoice (sequential number, PDF,
+  // VAT breakdown, hosted invoice page) and email it to the customer in
+  // their chosen `locale`. Required for Dutch BTW; nice-to-have everywhere
+  // else. The line item name + description on the invoice come from the
+  // localized strings already forwarded above. Footer points users at
+  // support for any invoice corrections.
+  params2.append('invoice_creation[enabled]', 'true');
+  params2.append('invoice_creation[invoice_data][description]', productDescription);
+  params2.append('invoice_creation[invoice_data][footer]', 'Questions about this invoice? support@jounee.app');
   params2.append('metadata[journey_uuid]', uuid);
   params2.append('payment_intent_data[metadata][journey_uuid]', uuid);
   params2.append('client_reference_id', uuid);
