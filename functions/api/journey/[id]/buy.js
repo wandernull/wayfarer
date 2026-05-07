@@ -83,6 +83,13 @@ export async function onRequestPost(context) {
   // non-NL customers will pass through tax-free until OSS is live.
   params2.append('automatic_tax[enabled]', 'true');
   params2.append('billing_address_collection', 'auto');
+  // "I'm purchasing as a business" toggle → company name + VAT/Tax ID field.
+  // Stripe validates EU VAT IDs against VIES in real time. Triggers EU intra-
+  // community reverse-charge (0% VAT, recipient self-accounts) where applicable
+  // — works even without OSS since the B2B exemption is independent. For
+  // NL→NL B2B and non-EU B2B the rate doesn't change, but the ID lands on the
+  // invoice so the customer can deduct input BTW / file expenses.
+  params2.append('tax_id_collection[enabled]', 'true');
   // Auto-generate a proper EU-compliant invoice (sequential number, PDF,
   // VAT breakdown, hosted invoice page) and email it to the customer in
   // their chosen `locale`. Required for Dutch BTW; nice-to-have everywhere

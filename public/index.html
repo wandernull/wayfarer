@@ -39,6 +39,21 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .lock-banner-cta { background: #2D6A4F; color: white; border: none; padding: 14px 36px; border-radius: 100px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.15s, transform 0.1s; }
 .lock-banner-cta:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
 .lock-banner-cta:disabled { opacity: 0.5; cursor: wait; }
+/* Post-Stripe success modal — shown once per ?paid=1 return so users
+   never miss the confirmation moment, even when the webhook lands so
+   quickly the lock-banner barely flashes. */
+.paid-modal-card { max-width: 440px; text-align: center; padding: 32px 28px; }
+.paid-modal-icon { font-size: 44px; margin-bottom: 10px; line-height: 1; }
+.paid-modal-title { font-size: 26px; font-family: 'DM Serif Display', serif; margin: 0 0 8px; color: #1f4031; }
+.paid-modal-subtitle { font-size: 14px; color: var(--text-secondary); margin: 0 auto 22px; line-height: 1.55; max-width: 360px; }
+.paid-modal-actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.paid-modal-btn { display: inline-block; padding: 12px 22px; border-radius: 100px; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; font-family: inherit; transition: opacity 0.15s, transform 0.1s, background 0.15s; border: 1.5px solid transparent; text-align: center; }
+.paid-modal-btn-primary { background: #2D6A4F; color: #fff; }
+.paid-modal-btn-primary:hover { opacity: 0.92; transform: translateY(-1px); }
+.paid-modal-btn-secondary { background: transparent; color: #2D6A4F; border-color: #2D6A4F; }
+.paid-modal-btn-secondary:hover { background: rgba(45, 106, 79, 0.06); }
+.paid-modal-dismiss { background: none; border: none; color: var(--text-secondary); font-size: 13px; cursor: pointer; padding: 8px; font-family: inherit; margin-top: 4px; }
+.paid-modal-dismiss:hover { color: var(--text); text-decoration: underline; }
 .regen-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 #results-action-bar button:disabled { opacity: 0.45; cursor: not-allowed; }
 .plan-pill .plan-parent { opacity: 0.65; font-weight: 500; }
@@ -1607,6 +1622,37 @@ async function pollPaymentStatus(uuid, maxAttempts = 13) {
   return false;
 }
 
+// One-shot success modal shown only when the user just returned from Stripe
+// Checkout (?paid=1 in the URL). Tied to that query param so it never re-
+// appears on later visits / shared links — bootFromUrl strips ?paid=1 right
+// after invoking this. Also gives the user a deliberate moment to grab the
+// invoice (View / PDF) before the auto-unlocked itinerary takes the focus.
+function showPaymentSuccessModal() {
+  // Idempotent — never stack modals if called twice in the same return path.
+  if (document.querySelector('.paid-modal-backdrop')) return;
+  const inv = state.tripData?.payment?.invoice;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-backdrop paid-modal-backdrop';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  const actions = [];
+  if (inv?.hostedUrl) actions.push(`<a href="${inv.hostedUrl}" target="_blank" rel="noopener" class="paid-modal-btn paid-modal-btn-primary">${t('payment_success_invoice_btn')}</a>`);
+  if (inv?.pdfUrl) actions.push(`<a href="${inv.pdfUrl}" target="_blank" rel="noopener" class="paid-modal-btn paid-modal-btn-secondary">${t('payment_success_pdf_btn')}</a>`);
+  overlay.innerHTML =
+    `<div class="modal-card paid-modal-card">` +
+    `<div class="paid-modal-icon">✅</div>` +
+    `<h3 class="paid-modal-title">${t('payment_success_title')}</h3>` +
+    `<div class="paid-modal-subtitle">${t('payment_success_subtitle')}</div>` +
+    (actions.length ? `<div class="paid-modal-actions">${actions.join('')}</div>` : '') +
+    `<button class="paid-modal-dismiss" onclick="dismissPaymentSuccessModal()">${t('payment_success_dismiss')}</button>` +
+    `</div>`;
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) dismissPaymentSuccessModal(); });
+  document.body.appendChild(overlay);
+}
+function dismissPaymentSuccessModal() {
+  document.querySelector('.paid-modal-backdrop')?.remove();
+}
+
 // Persist paid trips after mutations (regen-day, plan-swap). No-op for
 // pending trips since their CTAs are disabled and they can't mutate.
 async function persistJourneyUpdate() {
@@ -1658,16 +1704,26 @@ async function bootFromUrl() {
   // sees "Confirming your payment…" instead of the Buy banner during the poll
   // window. pollPaymentStatus clears the override on success.
   const qs = new URLSearchParams(location.search);
-  const awaitingWebhook = qs.get('paid') === '1' && data.payment?.status !== 'paid';
+  const justReturnedFromStripe = qs.get('paid') === '1';
+  const awaitingWebhook = justReturnedFromStripe && data.payment?.status !== 'paid';
   if (awaitingWebhook) state.paywallOverride = 'confirming';
   showItinerary(data.profile, data.itinerary);
   applyPaywallGating();
   enrichPlaces(data.profile, data.itinerary);
   if (awaitingWebhook) {
     pollPaymentStatus(uuid).finally(() => {
-      // Strip the query string so refresh / share doesn't re-trigger polling.
+      // Show the one-shot success modal only if the poll actually landed paid
+      // (timeout case keeps the locked banner — no fake confirmation).
+      if (state.tripData?.payment?.status === 'paid') showPaymentSuccessModal();
+      // Strip the query string so refresh / share doesn't re-trigger polling
+      // or re-open the modal on subsequent visits.
       try { history.replaceState({}, '', '/journey/' + uuid); } catch {}
     });
+  } else if (justReturnedFromStripe && data.payment?.status === 'paid') {
+    // Race winner: webhook landed before the SPA loaded. Still surface the
+    // success modal once, then clear ?paid=1 so it doesn't re-appear.
+    showPaymentSuccessModal();
+    try { history.replaceState({}, '', '/journey/' + uuid); } catch {}
   }
   return true;
 }

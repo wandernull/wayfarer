@@ -63,6 +63,34 @@ export async function onRequestPost(context) {
 
   // Idempotent — multiple webhook deliveries won't double-process.
   if (record.payment?.status !== 'paid') {
+    // The session has invoice creation enabled, so it carries an `invoice` ID.
+    // One follow-up API call gets us the customer-facing hosted URL + PDF —
+    // we persist those so the SPA can offer a "Download invoice" link on the
+    // post-payment success modal without ever touching the Stripe key client-
+    // side. Best-effort: if the lookup fails, we still mark the trip as paid
+    // and skip the invoice block (user can email support if needed).
+    let invoiceMeta = null;
+    if (session.invoice && env.STRIPE_SECRET_KEY) {
+      try {
+        const invRes = await fetch(`https://api.stripe.com/v1/invoices/${encodeURIComponent(session.invoice)}`, {
+          headers: { 'Authorization': `Bearer ${env.STRIPE_SECRET_KEY}` }
+        });
+        if (invRes.ok) {
+          const inv = await invRes.json();
+          invoiceMeta = {
+            id: inv.id,
+            number: inv.number || null,
+            hostedUrl: inv.hosted_invoice_url || null,
+            pdfUrl: inv.invoice_pdf || null
+          };
+        } else {
+          console.warn('[webhook] invoice fetch failed', session.invoice, invRes.status);
+        }
+      } catch (e) {
+        console.warn('[webhook] invoice fetch threw', e?.message);
+      }
+    }
+
     record.payment = {
       ...(record.payment || {}),
       status: 'paid',
@@ -70,11 +98,12 @@ export async function onRequestPost(context) {
       stripeSessionId: session.id,
       stripePaymentIntentId: session.payment_intent || null,
       amount: session.amount_total ?? record.payment?.amount ?? 499,
-      currency: ((session.currency || record.payment?.currency || 'eur') + '').toUpperCase()
+      currency: ((session.currency || record.payment?.currency || 'eur') + '').toUpperCase(),
+      invoice: invoiceMeta
     };
     // Re-PUT WITHOUT expirationTtl — paid trips persist indefinitely.
     await env.JOURNEYS.put(`journey:${uuid}`, JSON.stringify(record));
-    console.log('[webhook] journey unlocked', uuid, session.id);
+    console.log('[webhook] journey unlocked', uuid, session.id, invoiceMeta?.number || '(no invoice)');
   }
 
   return new Response(JSON.stringify({ ok: true }), {

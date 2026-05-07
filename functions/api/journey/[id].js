@@ -37,11 +37,14 @@ export async function onRequestGet(context) {
   }
 
   // Strip stripeSessionId / any other server-only fields from the payment block.
+  // Invoice URLs (hosted page + PDF) ARE customer-facing and safe to expose —
+  // they're already pre-signed for public access by Stripe.
   const safePayment = {
     status: record.payment?.status || 'pending',
     amount: record.payment?.amount ?? 499,
     currency: record.payment?.currency || 'EUR',
-    paidAt: record.payment?.paidAt || null
+    paidAt: record.payment?.paidAt || null,
+    invoice: record.payment?.invoice || null
   };
 
   return new Response(JSON.stringify({ ...record, payment: safePayment }), {
