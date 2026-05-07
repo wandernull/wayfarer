@@ -1,1 +1,6 @@
-/journey/*  /plan.html  200
+# Use the clean-URL form (/plan, not /plan.html). Pages auto-redirects .html
+# paths to their clean form for SEO, and that 301 fires inside the rewrite,
+# breaking the URL preservation. /plan resolves internally to plan.html
+# without triggering the auto-redirect.
+/journey/*  /plan  200
+
