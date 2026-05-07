@@ -1,0 +1,6 @@
+# Browsers need an XSLT-flavoured content-type for /sitemap.xml's stylesheet
+# to actually render. Cloudflare Pages would otherwise serve .xsl as
+# application/octet-stream.
+/sitemap.xsl
+  Content-Type: application/xslt+xml; charset=utf-8
+  Cache-Control: public, max-age=3600

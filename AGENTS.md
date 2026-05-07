@@ -9,14 +9,15 @@ Jounee is a B2C web app at `jounee.app` that generates personalized multi-day **
 ## Stack
 
 - **Runtime**: Cloudflare Pages with Functions (`functions/api/**`).
-- **Frontend**: vanilla HTML/JS in `public/index.html` (single SPA file). No bundler. i18n in `public/translations.js` (7 languages: en, tr, es, fr, de, it, pt).
+- **Frontend**: vanilla HTML/JS — `public/index.html` is the marketing landing, `public/plan.html` is the SPA. Both share `public/translations.js` (7 languages: en, tr, es, fr, de, it, pt) — same `t()` pattern, same `currentLang` localStorage key (`jounee_lang`), same language switcher component. No bundler.
 - **State**: Cloudflare KV namespace `JOURNEYS` (id `89af90c14a6149e0a2bc52fd2516b36f`), bound via `wrangler.toml`.
 - **AI**: Anthropic Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) for both the planner call and the itinerary call.
 - **Places data**: Google Places API (New) `searchNearby`.
 - **Geocoding**: Nominatim (OpenStreetMap) for sub-area resolution.
 - **Payments**: Stripe Checkout (one-time €4.99) + webhook → KV update.
 - **i18n**: simple key-value lookup in `translations.js`; `t(key)` reader, `data-i18n` attribute on DOM.
-- **Routing**: `/journey/<uuid>` shareable URLs via `_redirects` rewrite to `/index.html`; SPA inspects `location.pathname` on boot.
+- **Routing**: two static HTML files. `/` serves `public/index.html` (the marketing landing page — story-telling + pricing + SEO meta). `/plan` serves `public/plan.html` (the SPA / form / itinerary / paywall / payment flow). Shareable journey URLs `/journey/<uuid>` rewrite to `/plan.html` via `public/_redirects` (`200` rewrite, not 301 — URL bar still shows the journey path, the SPA inspects `location.pathname` on boot). Landing CTAs (`<a href="/plan">`) are plain links — no JS modal, the form lives at its own URL.
+- **SEO**: `/robots.txt` and `/sitemap.xml` are dynamic Pages Functions (`functions/robots.txt.js`, `functions/sitemap.xml.js`) — they read the request host so the same code emits `localhost:8788`, `*.pages.dev`, or `jounee.app` correctly. The sitemap references `/sitemap.xsl` (a static XSLT file) so opening it in a browser shows a Jounee-branded HTML view; crawlers ignore the stylesheet and parse the XML. `public/_headers` forces `application/xslt+xml` for the .xsl file (Pages would otherwise serve octet-stream and Chrome would reject the transform).
 
 ## End-to-end pipeline
 
@@ -172,7 +173,7 @@ Once the webhook lands paid, `bootFromUrl` shows a one-shot ✅ success modal (`
 - **Refund-to-relock automation.** Today: refunds in Stripe don't change KV. Most likely user behaviour: someone refunds, journey stays unlocked, they keep using it. Either accept that (free migration friction = low) or wire `charge.refunded` webhook → flip status back to pending. Decision pending.
 - **Spam / abuse defense.** Anyone can generate unlimited free trips (each one burns Anthropic Haiku tokens + Google Places quota + a KV record). No rate limits, no captcha, no auth. At scale this is real money. Cheap mitigation: per-IP rate limit at Cloudflare layer (Workers Rules or rate-limiting binding) before functions ever hit upstream APIs.
 - **Cross-language locale-aware pricing display.** €4.99 is hardcoded in copy and prompt. Consider `Intl.NumberFormat` for the displayed price; keep the actual Stripe charge in EUR (Stripe handles FX on the customer side).
-- **Marketing landing page**. Currently `/` IS the form. No SEO content, no positioning. Ship even a one-page landing for organic discovery.
+- ~~**Marketing landing page**~~. Shipped 2026-05-07. `/` is now the landing page (hero + how-it-works + features + pricing + footer, fully translated across all 7 languages). The SPA moved to `/plan`. Open follow-ups: hero illustration / screenshot beyond the wordmark, social-share OG image, basic FAQ section if conversion analytics show drop-off questions.
 - **Analytics / funnel tracking**. Zero visibility on form-start → generation-complete → buy-click → buy-success drop-off rates. Plausible/Posthog/even Cloudflare Web Analytics would unlock real product decisions.
 - **Customer support inbox.** `support@jounee.app` is referenced in Stripe and customer emails but probably doesn't route anywhere yet. Set up forwarding to a real inbox.
 
