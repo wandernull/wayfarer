@@ -184,7 +184,7 @@
     <h2 class="section-title" data-i18n="landing_pricing_title">Simple, honest pricing</h2>
     <p class="section-sub" data-i18n="landing_pricing_sub">One price per trip. No subscription, no upsell, no "premium tier."</p>
     <div class="pricing-card">
-      <div class="price-amount">€4.99</div>
+      <div class="price-amount" data-price-display>€4.99</div>
       <div class="price-sub" data-i18n="landing_pricing_per">one-time, per trip</div>
       <ul class="price-list">
         <li data-i18n="landing_pricing_item1">All days unlocked, not just Day 1</li>
@@ -205,11 +205,15 @@
 <script>
   // Lightweight i18n shell mirroring the SPA's pattern. Reuses the shared
   // translations.js so all copy lives in one source of truth.
+  // `priceDisplay` is set by /api/locale (geographic) — €4.99 default; ₺249,99
+  // for TR IPs. t() substitutes {price} so copy keys stay locale-agnostic.
   let currentLang = 'en';
+  let priceDisplay = '€4.99';
   function t(key) {
-    return (translations[currentLang] || translations.en)[key]
+    const raw = (translations[currentLang] || translations.en)[key]
       || translations.en[key]
       || key;
+    return raw.replace(/\{price\}/g, priceDisplay);
   }
   function applyTranslations() {
     document.documentElement.lang = currentLang;
@@ -221,6 +225,10 @@
       else if ('innerHTML' in el && /<\w+/.test(value)) el.innerHTML = value; // Allows <em>...</em> in headlines
       else el.textContent = value;
     });
+    // Geographic price applied to non-i18n elements (the big price card).
+    document.querySelectorAll('[data-price-display]').forEach(el => {
+      el.textContent = priceDisplay;
+    });
   }
   function changeLang(lang) {
     if (!translations[lang]) return;
@@ -230,12 +238,49 @@
     if (sw) sw.value = lang;
     applyTranslations();
   }
+  // Local-dev: forward `?country=XX` to /api/locale — the server-side override
+  // is gated to only fire when cf.country is missing, so prod sees no effect.
+  function geoOverrideQuery() {
+    try {
+      const o = new URLSearchParams(location.search).get('country');
+      return o ? ('?country=' + encodeURIComponent(o)) : '';
+    } catch { return ''; }
+  }
+  async function loadGeoPrice() {
+    try {
+      const res = await fetch('/api/locale' + geoOverrideQuery(), { cache: 'no-store' });
+      if (!res.ok) { console.warn('[locale] non-OK response', res.status); return; }
+      const data = await res.json();
+      if (!data) { console.warn('[locale] empty body'); return; }
+      if (typeof data.display === 'string') {
+        priceDisplay = data.display;
+      }
+      // Auto-language: only on first visit. localStorage `jounee_lang` is set
+      // exclusively by changeLang() (explicit user pick) — an empty value
+      // means user hasn't overridden. Once they pick, this never runs again.
+      const userPicked = !!localStorage.getItem('jounee_lang');
+      if (!userPicked && data.language && translations[data.language]) {
+        currentLang = data.language;
+        const sw = document.getElementById('lang-switcher');
+        if (sw) sw.value = currentLang;
+      }
+      applyTranslations();
+    } catch (e) {
+      console.error('[locale] failed', e);
+    }
+  }
+  // Carry `?country=XX` through to /plan so local-dev override survives the click.
+  document.querySelectorAll('a[href="/plan"]').forEach(a => {
+    const o = new URLSearchParams(location.search).get('country');
+    if (o) a.href = '/plan?country=' + encodeURIComponent(o);
+  });
   (function init() {
     const saved = localStorage.getItem('jounee_lang');
     if (saved && translations[saved]) currentLang = saved;
     const sw = document.getElementById('lang-switcher');
     if (sw) sw.value = currentLang;
     applyTranslations();
+    loadGeoPrice();
   })();
 </script>
 </body>

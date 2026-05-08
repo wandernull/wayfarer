@@ -5,6 +5,8 @@
 //
 // If the journey is already paid, returns { status: 'paid' } without
 // creating a new session — defends against double-clicks and refresh loops.
+import { resolveCountry, priceForCountry } from '../../locale.js';
+
 // Stripe Checkout supports a `locale` parameter that controls the language of
 // the hosted Checkout UI. We mirror Jounee's 7 supported languages so a user
 // browsing in Turkish doesn't get dropped into an English Stripe page mid-flow.
@@ -58,20 +60,28 @@ export async function onRequestPost(context) {
   const successUrl = `${base}/journey/${uuid}?paid=1&session={CHECKOUT_SESSION_ID}`;
   const cancelUrl = `${base}/journey/${uuid}`;
 
+  // Geographic pricing — same source of truth as /api/locale (so the price
+  // the SPA displayed and the price Stripe charges always agree). TR IPs
+  // get 249,99 ₺; everyone else gets 4,99 €. cf.country is set by the edge
+  // before this function runs.
+  const country = resolveCountry(request);
+  const price = priceForCountry(country);
+
   // Create the Checkout session via Stripe REST. Form-encoded params, not JSON.
   const params2 = new URLSearchParams();
   params2.append('mode', 'payment');
   params2.append('payment_method_types[]', 'card');
-  params2.append('line_items[0][price_data][currency]', 'eur');
+  params2.append('line_items[0][price_data][currency]', price.currency);
   params2.append('line_items[0][price_data][product_data][name]', productName);
   params2.append('line_items[0][price_data][product_data][description]', productDescription);
   // Stripe Tax: classify the line item as a general digital service so the
   // hosted tax rules apply (txcd_10000000). `tax_behavior: inclusive` keeps
-  // the customer-facing total at €4.99 across the SPA copy / translations
-  // — the VAT portion is carved out of that amount on the seller side.
+  // the customer-facing total at the displayed price (4,99 € or 249,99 ₺) —
+  // the VAT portion is carved out of that amount on the seller side when
+  // applicable (NL→NL only today).
   params2.append('line_items[0][price_data][product_data][tax_code]', 'txcd_10000000');
   params2.append('line_items[0][price_data][tax_behavior]', 'inclusive');
-  params2.append('line_items[0][price_data][unit_amount]', '499'); // €4.99
+  params2.append('line_items[0][price_data][unit_amount]', String(price.amount));
   params2.append('line_items[0][quantity]', '1');
   params2.append('success_url', successUrl);
   params2.append('cancel_url', cancelUrl);
