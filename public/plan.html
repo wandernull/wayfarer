@@ -82,6 +82,13 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .btn-outline:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
 .btn-solid { padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
 .btn-solid:hover { background: var(--accent-hover); }
+.share-wrap { position: relative; }
+.share-menu { position: absolute; right: 0; bottom: calc(100% + 8px); min-width: 200px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px rgba(26, 23, 20, 0.12); padding: 6px; display: none; flex-direction: column; gap: 2px; z-index: 200; }
+.share-menu.open { display: flex; }
+.share-menu-item { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: none; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: var(--text-primary); cursor: pointer; text-align: left; transition: background 0.12s; }
+.share-menu-item:hover { background: var(--accent-light); color: var(--accent); }
+.share-toast { position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%) translateY(8px); padding: 10px 18px; background: var(--text-primary); color: var(--bg); font-size: 13px; font-weight: 500; border-radius: 100px; opacity: 0; pointer-events: none; transition: opacity 0.18s, transform 0.18s; z-index: 250; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18); }
+.share-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 #onboarding-view { padding-top: var(--header-h); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding-bottom: 40px; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; width: 100%; max-width: 620px; padding: 50px 54px; animation: fadeUp 0.38s ease both; margin: 40px 24px; }
 @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
@@ -362,7 +369,14 @@ input::placeholder { color: var(--step-inactive); }
 <div id="results-action-bar">
   <button class="btn-outline" id="switch-plan-btn" onclick="openPlanSwap()" data-i18n="switch_plan_btn" style="display:none;">🎯 Switch plan</button>
   <button class="btn-outline" onclick="resetApp()" data-i18n="edit_trip">✏️ Edit trip</button>
-  <button class="btn-solid" onclick="window.print()" data-i18n="export_pdf">🖨 Export PDF</button>
+  <div class="share-wrap">
+    <button class="btn-solid" id="share-btn" onclick="shareTrip(event)" data-i18n="share_trip">↗ Share</button>
+    <div class="share-menu" id="share-menu" role="menu">
+      <button class="share-menu-item" onclick="downloadPdf()" data-i18n="export_pdf">🖨 Export PDF</button>
+      <button class="share-menu-item" onclick="copyTripUrl()" data-i18n="share_copy_url">🔗 Copy URL</button>
+    </div>
+  </div>
+  <div id="share-toast" class="share-toast" data-i18n="share_url_copied">URL copied</div>
 </div>
 <div id="onboarding-view">
   <div class="card" id="step-0">
@@ -545,38 +559,48 @@ function geoOverrideQuery() {
     return o ? ('?country=' + encodeURIComponent(o)) : '';
   } catch { return ''; }
 }
-async function loadGeoPrice() {
-  try {
-    const res = await fetch('/api/locale' + geoOverrideQuery(), { cache: 'no-store' });
-    if (!res.ok) { console.warn('[locale] non-OK', res.status); return; }
-    const data = await res.json();
-    if (!data) { console.warn('[locale] empty body'); return; }
-    if (typeof data.display === 'string') {
-      state.priceDisplay = data.display;
+// Memoized so multiple call sites share one in-flight fetch. bootFromUrl
+// awaits it before rendering anything that uses t() imperatively (sidebar
+// labels via showItinerary, day cards, success modal); the DOMContentLoaded
+// path also fires it so the form view + landing have the resolved value
+// even when bootFromUrl returns false (non-journey URL).
+let _geoPricePromise = null;
+function loadGeoPrice() {
+  if (_geoPricePromise) return _geoPricePromise;
+  _geoPricePromise = (async () => {
+    try {
+      const res = await fetch('/api/locale' + geoOverrideQuery(), { cache: 'no-store' });
+      if (!res.ok) { console.warn('[locale] non-OK', res.status); return; }
+      const data = await res.json();
+      if (!data) { console.warn('[locale] empty body'); return; }
+      if (typeof data.display === 'string') {
+        state.priceDisplay = data.display;
+      }
+      // Auto-language: only apply on first visit. localStorage `jounee_lang` is
+      // set exclusively by changeLang() (explicit user pick) — empty value
+      // means user hasn't overridden. Once they pick, this never runs again.
+      const userPicked = !!localStorage.getItem('jounee_lang');
+      if (!userPicked && data.language && translations[data.language]) {
+        currentLang = data.language;
+        const sw = document.getElementById('lang-switcher');
+        if (sw) sw.value = currentLang;
+      }
+      applyTranslations();
+      // The lock-banner subtitle + Buy CTA are rendered via innerHTML inside
+      // applyPaywallGating (not via [data-i18n]) — applyTranslations doesn't
+      // catch them. Re-render the paywall when a trip is on screen so the
+      // banner reflects the geo-resolved price (e.g. ₺249,99 for TR IPs).
+      if (state.tripData && typeof applyPaywallGating === 'function') {
+        applyPaywallGating();
+      }
+      // Update the step label which is rendered imperatively (not via data-i18n).
+      const sl = document.getElementById('step-label');
+      if (sl) sl.textContent = t('step_of').replace('{n}', state.currentStep + 1);
+    } catch (e) {
+      console.error('[locale] failed', e);
     }
-    // Auto-language: only apply on first visit. localStorage `jounee_lang` is
-    // set exclusively by changeLang() (explicit user pick) — empty value means
-    // user hasn't overridden. Once they pick, this never runs again.
-    const userPicked = !!localStorage.getItem('jounee_lang');
-    if (!userPicked && data.language && translations[data.language]) {
-      currentLang = data.language;
-      const sw = document.getElementById('lang-switcher');
-      if (sw) sw.value = currentLang;
-    }
-    applyTranslations();
-    // The lock-banner subtitle + Buy CTA are rendered via innerHTML inside
-    // applyPaywallGating (not via [data-i18n]) — applyTranslations doesn't
-    // catch them. Re-render the paywall when a trip is on screen so the
-    // banner reflects the geo-resolved price (e.g. ₺249,99 for TR IPs).
-    if (state.tripData && typeof applyPaywallGating === 'function') {
-      applyPaywallGating();
-    }
-    // Update the step label which is rendered imperatively (not via data-i18n).
-    const sl = document.getElementById('step-label');
-    if (sl) sl.textContent = t('step_of').replace('{n}', state.currentStep + 1);
-  } catch (e) {
-    console.error('[locale] failed', e);
-  }
+  })();
+  return _geoPricePromise;
 }
 function goTo(step) {
   document.getElementById(`step-${state.currentStep}`).style.display = 'none';
@@ -1771,6 +1795,14 @@ async function bootFromUrl() {
   };
   state.candidates = data.candidates || null;
   state.plan = { byCity: data.planByCity || {} };
+  // Wait for auto-language to land BEFORE imperatively-rendered HTML bakes in
+  // English. showItinerary's sidebar labels, day cards, success modal etc.
+  // all interpolate t() at render time — if currentLang is still 'en' here,
+  // those strings stay English even after applyTranslations runs later
+  // (applyTranslations only re-renders [data-i18n] elements). loadGeoPrice
+  // is memoized and was kicked off at DOMContentLoaded, so this typically
+  // resolves instantly or in <100ms.
+  await loadGeoPrice();
   // Stripe-success return path: ?paid=1 means user just came back from Checkout.
   // Set the 'confirming' override BEFORE the first paywall render so the user
   // sees "Confirming your payment…" instead of the Buy banner during the poll
@@ -2046,6 +2078,79 @@ function resetApp() {
   // doesn't keep "Paris · Jounee" in the browser tab after editing the trip.
   try { document.title = 'Jounee – AI Travel Planner'; } catch {}
   goTo(0);
+}
+
+// ─── Share affordance ───────────────────────────────────────────────────
+// Touch devices (`pointer: coarse`) get the OS native share sheet via
+// navigator.share — works for iOS Safari, Android Chrome, Android Firefox.
+// Desktop gets a small dropdown with Download PDF + Copy URL because the
+// native share dialog on desktop browsers is awkward and gives users no
+// affordance for the two things they actually want here.
+function shareTrip(event) {
+  if (event) event.stopPropagation();
+  const isTouch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  if (isTouch && typeof navigator.share === 'function') {
+    const title = (state.tripData?.itinerary?.tripTitle) || document.title || 'Jounee';
+    navigator.share({
+      title,
+      text: t('share_native_text'),
+      url: location.href
+    }).catch(() => { /* user cancelled — silent */ });
+    return;
+  }
+  toggleShareMenu();
+}
+function toggleShareMenu() {
+  const menu = document.getElementById('share-menu');
+  if (!menu) return;
+  menu.classList.toggle('open');
+}
+function closeShareMenu() {
+  const menu = document.getElementById('share-menu');
+  if (menu) menu.classList.remove('open');
+}
+// Click-outside handler — wraps in capture phase so it fires before button
+// handlers and doesn't reopen the menu we just clicked through.
+document.addEventListener('click', (e) => {
+  const wrap = document.querySelector('.share-wrap');
+  if (!wrap) return;
+  if (!wrap.contains(e.target)) closeShareMenu();
+});
+function downloadPdf() {
+  closeShareMenu();
+  // Existing flow — print-to-PDF dialog. Server-side branded PDF is the
+  // obvious next step but `window.print()` is fine for MVP (AGENTS.md).
+  window.print();
+}
+async function copyTripUrl() {
+  closeShareMenu();
+  const url = location.href;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(url);
+    } else {
+      // Older browsers / non-secure contexts. The execCommand approach
+      // requires a real selection, so we do the textarea hack.
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    showShareToast();
+  } catch (e) {
+    console.warn('[share] copy failed', e);
+  }
+}
+function showShareToast() {
+  const t = document.getElementById('share-toast');
+  if (!t) return;
+  t.classList.add('show');
+  clearTimeout(showShareToast._t);
+  showShareToast._t = setTimeout(() => t.classList.remove('show'), 1800);
 }
 </script>
 </body>

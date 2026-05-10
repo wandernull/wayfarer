@@ -2,6 +2,10 @@ const translations = {
   en: {
     edit_trip: '✏️ Edit trip',
     export_pdf: '🖨 Export PDF',
+    share_trip: '↗ Share',
+    share_copy_url: '🔗 Copy URL',
+    share_url_copied: 'URL copied',
+    share_native_text: 'Check out my Jounee trip plan',
     step_of: 'Step {n} of 3',
 
     step1_badge: 'Step 1 · Destination',
@@ -241,7 +245,10 @@ const translations = {
   tr: {
     edit_trip: '✏️ Seyahati Düzenle',
     export_pdf: '🖨 PDF İndir',
-    share: '↗ Paylaş',
+    share_trip: '↗ Paylaş',
+    share_copy_url: '🔗 URL’yi kopyala',
+    share_url_copied: 'URL kopyalandı',
+    share_native_text: 'Jounee seyahat planıma göz at',
     step_of: 'Adım {n} / 3',
 
     step1_badge: 'Adım 1 · Hedef',
@@ -481,7 +488,10 @@ const translations = {
   es: {
     edit_trip: '✏️ Editar viaje',
     export_pdf: '🖨 Exportar PDF',
-    share: '↗ Compartir',
+    share_trip: '↗ Compartir',
+    share_copy_url: '🔗 Copiar URL',
+    share_url_copied: 'URL copiada',
+    share_native_text: 'Mira mi plan de viaje en Jounee',
     step_of: 'Paso {n} de 3',
 
     step1_badge: 'Paso 1 · Destino',
@@ -721,7 +731,10 @@ const translations = {
   fr: {
     edit_trip: '✏️ Modifier le voyage',
     export_pdf: '🖨 Exporter PDF',
-    share: '↗ Partager',
+    share_trip: '↗ Partager',
+    share_copy_url: '🔗 Copier l’URL',
+    share_url_copied: 'URL copiée',
+    share_native_text: 'Découvre mon plan de voyage Jounee',
     step_of: 'Étape {n} sur 3',
 
     step1_badge: 'Étape 1 · Destination',
@@ -961,7 +974,10 @@ const translations = {
   de: {
     edit_trip: '✏️ Reise bearbeiten',
     export_pdf: '🖨 PDF exportieren',
-    share: '↗ Teilen',
+    share_trip: '↗ Teilen',
+    share_copy_url: '🔗 URL kopieren',
+    share_url_copied: 'URL kopiert',
+    share_native_text: 'Schau dir meinen Jounee-Reiseplan an',
     step_of: 'Schritt {n} von 3',
 
     step1_badge: 'Schritt 1 · Ziel',
@@ -1201,7 +1217,10 @@ const translations = {
   it: {
     edit_trip: '✏️ Modifica viaggio',
     export_pdf: '🖨 Esporta PDF',
-    share: '↗ Condividi',
+    share_trip: '↗ Condividi',
+    share_copy_url: '🔗 Copia URL',
+    share_url_copied: 'URL copiato',
+    share_native_text: 'Guarda il mio piano di viaggio su Jounee',
     step_of: 'Passo {n} di 3',
 
     step1_badge: 'Passo 1 · Destinazione',
@@ -1441,7 +1460,10 @@ const translations = {
   pt: {
     edit_trip: '✏️ Editar viagem',
     export_pdf: '🖨 Exportar PDF',
-    share: '↗ Partilhar',
+    share_trip: '↗ Partilhar',
+    share_copy_url: '🔗 Copiar URL',
+    share_url_copied: 'URL copiado',
+    share_native_text: 'Vê o meu plano de viagem no Jounee',
     step_of: 'Passo {n} de 3',
 
     step1_badge: 'Passo 1 · Destino',
